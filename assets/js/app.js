@@ -2,7 +2,7 @@
  * app.js — ตัวควบคุมหลักของแอปฝึกเขียนตาม
  * ------------------------------------------------------------------ */
 (function () {
-  const { CATEGORIES, buildPool } = window.KH_DATA;
+  const { CATEGORIES, buildPool, displayForm } = window.KH_DATA;
   const AUDIO = window.KH_AUDIO;
   const $ = (id) => document.getElementById(id);
 
@@ -19,6 +19,7 @@
     pressure: true,
     autoClear: true,
     pen: 'auto',
+    vowelStyle: 'or',
     color: '#2d3142',
     size: 14,
   };
@@ -157,6 +158,10 @@
   }
 
   /* ================= รอบการเล่น ================= */
+  function shownChar(item) {
+    return displayForm(item, S.vowelStyle);
+  }
+
   function effectiveGuide() {
     return S.listenOnly ? 'none' : S.guide;
   }
@@ -169,12 +174,12 @@
 
     catBadge.textContent = (CATEGORIES.find((c) => c.id === current.cat) || {}).name || '';
     catBadge.style.background = `linear-gradient(135deg, ${current.color}, ${shade(current.color, -18)})`;
-    charText.textContent = current.ch;
+    charText.textContent = shownChar(current);
     hintText.textContent = current.hint || '';
 
     board.accent = current.color;
     if (S.autoClear) board.clear();
-    board.setGuide(current.ch, effectiveGuide());
+    board.setGuide(shownChar(current), effectiveGuide());
     boardHint.classList.toggle('hide', !board.isEmpty());
 
     const secs = S.listenOnly ? 0 : S.showSec;
@@ -240,7 +245,7 @@
     peeking = true;
     stopTimers();
     showChar(true);
-    board.setGuide(current.ch, S.guide === 'none' ? 'faint' : S.guide);
+    board.setGuide(shownChar(current), S.guide === 'none' ? 'faint' : S.guide);
     timerWrap.classList.add('show');
     timerLabel.textContent = 'ดูแวบเดียวนะ 👀';
     const start = performance.now();
@@ -249,7 +254,7 @@
       timerFill.style.transform = `scaleX(${left})`;
       if (left > 0) { rafId = requestAnimationFrame(step); return; }
       showChar(false);
-      board.setGuide(current.ch, effectiveGuide());
+      board.setGuide(shownChar(current), effectiveGuide());
       timerLabel.textContent = 'เขียนต่อเลย ✍️';
       peeking = false;
     };
@@ -278,11 +283,11 @@
 
     // เฉลยให้เห็นตัวจริงสักครู่
     showChar(true);
-    if (current) board.setGuide(current.ch, S.guide === 'none' ? 'faint' : S.guide);
+    if (current) board.setGuide(shownChar(current), S.guide === 'none' ? 'faint' : S.guide);
 
     timerId = setTimeout(() => {
       if (S.autoNext) newRound(true);
-      else if (current) board.setGuide(current.ch, effectiveGuide());
+      else if (current) board.setGuide(shownChar(current), effectiveGuide());
     }, 1500);
   }
 
@@ -434,7 +439,21 @@
       b.addEventListener('click', () => {
         S.guide = b.dataset.guide;
         setSeg('guideSeg', 'guide', S.guide);
-        if (current) board.setGuide(current.ch, effectiveGuide());
+        if (current) board.setGuide(shownChar(current), effectiveGuide());
+        save();
+      });
+    });
+
+    // รูปแบบสระ / วรรณยุกต์
+    document.querySelectorAll('#vowelSeg button').forEach((b) => {
+      b.addEventListener('click', () => {
+        S.vowelStyle = b.dataset.vowel;
+        setSeg('vowelSeg', 'vowel', S.vowelStyle);
+        if (current) {
+          charText.textContent = shownChar(current);
+          board.setGuide(shownChar(current), effectiveGuide());
+        }
+        AUDIO.sfx.pop();
         save();
       });
     });
@@ -541,7 +560,7 @@
   function applyListenOnly() {
     $('listenOnlyBtn').classList.toggle('is-on', S.listenOnly);
     if (current) {
-      board.setGuide(current.ch, effectiveGuide());
+      board.setGuide(shownChar(current), effectiveGuide());
       if (S.listenOnly) {
         stopTimers();
         showChar(false);
@@ -587,6 +606,7 @@
       b.classList.toggle('is-active', +b.dataset.size === S.size)
     );
     setSeg('penSeg', 'pen', S.pen);
+    setSeg('vowelSeg', 'vowel', S.vowelStyle);
     applyLevel();
     refreshPool();
     bindUI();
