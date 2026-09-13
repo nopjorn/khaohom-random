@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
+<title>ฝึกเขียนตาม | สุ่มตัวอักษรสำหรับหนู ๆ</title>
+<meta name="description" content="เว็บสุ่มตัวเลข พยัญชนะ สระ คำง่าย และ A-Z พร้อมเสียงอ่าน ให้เด็ก ๆ ฝึกเขียนตามบน iPad ด้วย Apple Pencil">
+<meta name="theme-color" content="#7c5cff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ฝึกเขียน">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Mali:wght@400;500;600;700&family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<!-- ===================== หน้าเริ่มต้น ===================== -->
+<div id="welcome" class="overlay">
+  <div class="welcome-card">
+    <div class="welcome-emoji">✏️🌈</div>
+    <h1>ฝึกเขียนตาม</h1>
+    <p class="sub">สุ่มตัวอักษร ตัวเลข และคำง่าย ๆ พร้อมเสียงอ่าน<br>เขียนตามได้เลยด้วย Apple Pencil</p>
+    <button id="startBtn" class="big-btn">เริ่มเล่นกันเลย!</button>
+    <p class="tiny">แตะปุ่มเพื่อเปิดเสียงบน iPad นะคะ</p>
+  </div>
+</div>
+
+<!-- ===================== แถบบน ===================== -->
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-icon">✏️</span>
+    <span class="brand-text">ฝึกเขียนตาม</span>
+  </div>
+
+  <div class="score-wrap">
+    <div class="score-chip" title="จำนวนที่เขียนแล้ว">⭐ <b id="scoreVal">0</b></div>
+    <div class="score-chip" title="เขียนต่อเนื่อง">🔥 <b id="streakVal">0</b></div>
+    <div class="score-chip level-chip" id="levelChip" title="ระดับความยาก">ระดับ <b id="levelVal">1</b></div>
+  </div>
+
+  <div class="top-actions">
+    <button id="listenOnlyBtn" class="icon-btn" title="ฟังอย่างเดียว (ซ่อนตัวอักษร)">🙈<span>ฟังอย่างเดียว</span></button>
+    <button id="fullBtn" class="icon-btn" title="เต็มจอ">⛶<span>เต็มจอ</span></button>
+    <button id="settingsBtn" class="icon-btn" title="ตั้งค่า">⚙️<span>ตั้งค่า</span></button>
+  </div>
+</header>
+
+<!-- ===================== เนื้อหาหลัก ===================== -->
+<main class="stage">
+
+  <!-- การ์ดตัวอักษร -->
+  <section class="prompt-card" id="promptCard">
+    <div class="prompt-inner">
+      <div class="cat-badge" id="catBadge">พยัญชนะไทย</div>
+
+      <div class="char-area">
+        <div class="char-box" id="charBox">
+          <div class="char" id="charText">ก</div>
+          <div class="hidden-face" id="hiddenFace">
+            <div class="ear">👂</div>
+            <div class="hidden-label">ตั้งใจฟังนะ แล้วเขียนตามเลย!</div>
+          </div>
+        </div>
+        <div class="hint" id="hintText">ก ไก่</div>
+      </div>
+
+      <div class="timer-wrap" id="timerWrap">
+        <div class="timer-bar"><span id="timerFill"></span></div>
+        <div class="timer-label" id="timerLabel">กำลังแสดง…</div>
+      </div>
+
+      <div class="prompt-actions">
+        <button id="sayBtn" class="round-btn speak" title="ฟังเสียงอีกครั้ง">🔊<span>ฟังอีกครั้ง</span></button>
+        <button id="peekBtn" class="round-btn peek" title="ดูตัวอักษรแวบหนึ่ง">👀<span>ขอดูแวบ</span></button>
+        <button id="nextBtn" class="round-btn next" title="สุ่มตัวใหม่">🎲<span>ตัวต่อไป</span></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- กระดานเขียน -->
+  <section class="board-card">
+    <div class="board-wrap" id="boardWrap">
+      <canvas id="guideCanvas" class="layer"></canvas>
+      <canvas id="inkCanvas" class="layer"></canvas>
+      <div class="board-hint" id="boardHint">เขียนตรงนี้ได้เลย 👇</div>
+    </div>
+
+    <!-- แถบเครื่องมือปากกา -->
+    <div class="toolbar">
+      <div class="tool-group colors" id="colorRow"></div>
+
+      <div class="tool-group sizes">
+        <button class="size-btn" data-size="8"><i style="width:8px;height:8px"></i></button>
+        <button class="size-btn is-active" data-size="14"><i style="width:14px;height:14px"></i></button>
+        <button class="size-btn" data-size="22"><i style="width:22px;height:22px"></i></button>
+        <button class="size-btn" data-size="32"><i style="width:30px;height:30px"></i></button>
+      </div>
+
+      <div class="tool-group">
+        <button id="eraserBtn" class="tool-btn" title="ยางลบ">🧽<span>ยางลบ</span></button>
+        <button id="undoBtn" class="tool-btn" title="ย้อนกลับ">↩️<span>ย้อนกลับ</span></button>
+        <button id="redoBtn" class="tool-btn" title="ทำซ้ำ">↪️<span>ทำซ้ำ</span></button>
+        <button id="clearBtn" class="tool-btn" title="ล้างกระดาน">🗑️<span>ล้าง</span></button>
+      </div>
+
+      <div class="tool-group grow-end">
+        <button id="saveBtn" class="tool-btn" title="บันทึกเป็นรูป">💾<span>บันทึก</span></button>
+        <button id="doneBtn" class="done-btn">เขียนเสร็จแล้ว! ✅</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ===================== แผงตั้งค่า ===================== -->
+<aside id="settings" class="drawer" aria-hidden="true">
+  <div class="drawer-head">
+    <h2>⚙️ ตั้งค่า</h2>
+    <button id="closeSettings" class="close-btn">✕</button>
+  </div>
+
+  <div class="drawer-body">
+    <div class="field">
+      <label>ระดับความยาก</label>
+      <div class="seg" id="levelSeg">
+        <button data-level="1" class="is-active">😊 ง่าย</button>
+        <button data-level="2">🙂 ปานกลาง</button>
+        <button data-level="3">😎 ยาก</button>
+      </div>
+      <p class="field-note" id="levelNote"></p>
+    </div>
+
+    <div class="field">
+      <label>หมวดที่จะสุ่ม</label>
+      <div class="chips" id="catChips"></div>
+    </div>
+
+    <div class="field">
+      <label>แสดงตัวอักษรนาน <b id="showSecVal">5</b> วินาที</label>
+      <input type="range" id="showSec" min="0" max="15" step="1" value="5">
+      <p class="field-note">ตั้งเป็น 0 = ไม่แสดงเลย มีแต่เสียง (ฝึกฟัง)</p>
+    </div>
+
+    <div class="field">
+      <label>ตัวอย่างให้เขียนทับ</label>
+      <div class="seg" id="guideSeg">
+        <button data-guide="trace" class="is-active">ตัวโปร่ง</button>
+        <button data-guide="faint">จาง ๆ</button>
+        <button data-guide="none">ไม่มี</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>ความเร็วเสียงอ่าน <b id="rateVal">0.85</b>x</label>
+      <input type="range" id="rateRange" min="0.5" max="1.2" step="0.05" value="0.85">
+    </div>
+
+    <div class="field toggles">
+      <label class="switch"><input type="checkbox" id="optListen"><span></span>ฟังอย่างเดียว (ซ่อนตัวอักษร)</label>
+      <label class="switch"><input type="checkbox" id="optAutoNext"><span></span>สุ่มตัวใหม่อัตโนมัติเมื่อกดเสร็จ</label>
+      <label class="switch"><input type="checkbox" id="optLines" checked><span></span>แสดงเส้นบรรทัด</label>
+      <label class="switch"><input type="checkbox" id="optPressure" checked><span></span>ใช้แรงกด Apple Pencil</label>
+      <label class="switch"><input type="checkbox" id="optAutoClear" checked><span></span>ล้างกระดานเมื่อสุ่มตัวใหม่</label>
+    </div>
+
+    <div class="field">
+      <label>รับสัมผัสจาก</label>
+      <div class="seg" id="penSeg">
+        <button data-pen="auto" class="is-active">อัตโนมัติ</button>
+        <button data-pen="on">ปากกาเท่านั้น</button>
+        <button data-pen="off">นิ้วก็ได้</button>
+      </div>
+      <p class="field-note">“อัตโนมัติ” จะกันฝ่ามือให้เอง เมื่อตรวจพบ Apple Pencil</p>
+    </div>
+
+    <div class="field">
+      <button id="resetScore" class="ghost-btn">ล้างคะแนน</button>
+    </div>
+
+    <p class="credit">ทำด้วย 💜 สำหรับหนู ๆ วัย 5 ขวบ</p>
+  </div>
+</aside>
+<div id="scrim" class="scrim"></div>
+
+<!-- ===================== เอฟเฟกต์ / ป้ายแจ้ง ===================== -->
+<canvas id="confetti" class="confetti"></canvas>
+<div id="toast" class="toast"></div>
+<div id="praise" class="praise"><span id="praiseText">เก่งมาก!</span></div>
+
+<script src="assets/js/data.js"></script>
+<script src="assets/js/audio.js"></script>
+<script src="assets/js/board.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
