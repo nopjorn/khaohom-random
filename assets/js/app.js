@@ -21,6 +21,9 @@
     vowelStyle: 'or',
     check: true,
     strict: 'easy',
+    session: false,
+    setLen: 10,
+    stroke: true,
     customGreat: 73,      // % ที่ถือว่าถูกต้อง (ตัวเลขเดียวกับที่โชว์ในผลตรวจ)
     customClose: 56,      // % ที่ถือว่าใกล้เคียง
     font: 'mali',
@@ -92,8 +95,13 @@
 
   const board = new window.KH_Board($('boardWrap'), $('guideCanvas'), $('inkCanvas'), $('checkCanvas'));
   const CHECKER = window.KH_Checker;
+  const STATS = window.KH_Stats;
 
   let pool = [];
+  let focusPool = [];        // ฝึกเฉพาะตัวที่ยังไม่คล่อง
+  let setCount = 0;
+  let setResults = [];
+  const headCache = new Map();
   let current = null;
   let recent = [];
   let timerId = null;
@@ -122,6 +130,7 @@
           b.style.background = cat.color;
         }
         AUDIO.sfx.pop();
+        focusPool = [];
         refreshPool();
         save();
       });
@@ -166,6 +175,16 @@
   }
 
   function pickNext() {
+    const src = focusPool.length ? focusPool : pool;
+    if (src.length <= 1) return src[0];
+    const pool0 = pool;
+    pool = src;
+    const got = pickFrom(src);
+    pool = pool0;
+    return got;
+  }
+
+  function pickFrom(pool) {
     if (pool.length <= 1) return pool[0];
     let item, guard = 0;
     do {
@@ -180,6 +199,26 @@
   /* ================= รอบการเล่น ================= */
   function shownChar(item) {
     return displayForm(item, S.vowelStyle);
+  }
+
+  /* หาตำแหน่งหัวของตัวอักษร (เฉพาะตัวเดียว ไม่ใช่คำ) แล้วจำไว้ใช้ซ้ำ */
+  function headOf(text) {
+    if (!S.stroke || !CHECKER || !CHECKER.findHead) return null;
+    if (!text || [...text].length > 1) return null;
+    const key = `${text}|${S.font}|${S.fontScale}`;
+    if (!headCache.has(key)) {
+      try {
+        headCache.set(key, CHECKER.findHead(board.targetCanvas(text)));
+      } catch (e) {
+        headCache.set(key, null);
+      }
+    }
+    return headCache.get(key);
+  }
+
+  function applyStartDot() {
+    const head = headOf(current ? shownChar(current) : '');
+    board.startDot = head && board.w ? { x: head.x * board.w, y: head.y * board.h } : null;
   }
 
   function effectiveGuide() {
@@ -205,6 +244,7 @@
     board.accent = current.color;
     hideResult();
     if (S.autoClear) board.clear();
+    applyStartDot();
     board.setGuide(shownChar(current), effectiveGuide());
     boardHint.classList.toggle('hide', !board.isEmpty());
 
@@ -339,6 +379,100 @@
     $('resultSub').textContent = sub || '';
   }
 
+  /* ตัวอักษรไทยส่วนใหญ่เขียนทีเดียวจบ บางตัวมีสองเส้น ที่เหลือเผื่อไว้กว้าง ๆ */
+  const MULTI_STROKE = { 'ญ': 2, 'ฐ': 2, 'ฒ': 2, 'ณ': 2, 'ฎ': 2, 'ฏ': 2, 'ฬ': 2, 'ฆ': 2, 'ฌ': 2, 'ษ': 2, 'ศ': 2 };
+  function expectedStrokes(text) {
+    const chars = [...(text || '')];
+    if (!chars.length) return 3;
+    if (chars.length > 1) return chars.length * 2;
+    const ch = chars[0];
+    if (MULTI_STROKE[ch]) return MULTI_STROKE[ch];
+    return /[\u0E00-\u0E7F]/.test(ch) ? 1 : 3;    // ไทย 1 เส้น ตัวเลข/อังกฤษเผื่อ 3
+  }
+
+  /* คำแนะนำการลากเส้น — เป็นคำแนะนำเท่านั้น ไม่มีผลกับดาว */
+  function strokeHints(text) {
+    if (!S.stroke) return [];
+    const strokes = board.strokes;
+    if (!strokes.length) return [];
+    const hints = [];
+
+    const head = headOf(text);
+    if (head && board.w) {
+      const p = strokes[0].pts[0];
+      const dist = Math.hypot(p.x - head.x * board.w, p.y - head.y * board.h) / board.h;
+      if (dist > 0.25) hints.push('คราวหน้าเริ่มเขียนจากหัว 🌀 ก่อนนะคะ');
+    }
+    if (strokes.length > expectedStrokes(text) + 2) {
+      hints.push('ลองเขียนต่อเนื่อง ไม่ยกปากกาบ่อย ๆ นะคะ');
+    }
+    return hints;
+  }
+
+  /* ---------- ชุดฝึกและสถิติ ---------- */
+  function updateSetChip() {
+    const chip = $('setChip');
+    chip.hidden = !S.session;
+    if (!S.session) return;
+    $('setNow').textContent = Math.min(setCount, S.setLen);
+    $('setTotal').textContent = S.setLen;
+    $('setFill').style.width = `${Math.min(100, (setCount / S.setLen) * 100)}%`;
+  }
+
+  function recordResult(verdict) {
+    const ch = current ? current.ch : '';
+    if (STATS) STATS.record(ch, verdict);
+    if (!S.session) return;
+    setResults.push({ ch, verdict, hint: current ? current.hint : '' });
+    setCount++;
+    updateSetChip();
+    if (setCount >= S.setLen) {
+      timerId = setTimeout(showSummary, 1500);
+    }
+  }
+
+  function startSet() {
+    setCount = 0;
+    setResults = [];
+    updateSetChip();
+  }
+
+  function showSummary() {
+    const great = setResults.filter((r) => r.verdict === 'great').length;
+    const close = setResults.filter((r) => r.verdict === 'close').length;
+    const retry = setResults.filter((r) => r.verdict === 'retry').length;
+    const plain = setResults.filter((r) => r.verdict === 'done').length;
+    const stars = great * 3 + close * 2 + retry;
+    const max = setResults.length * 3;
+    const todo = [...new Set(setResults.filter((r) => r.verdict === 'close' || r.verdict === 'retry').map((r) => r.ch))];
+
+    const ratio = max ? stars / max : 1;
+    $('sumEmoji').textContent = ratio > 0.85 ? '🏆' : ratio > 0.6 ? '🎉' : '💪';
+    $('sumTitle').textContent = ratio > 0.85 ? 'เก่งมากเลย!' : ratio > 0.6 ? 'จบชุดแล้ว เยี่ยม!' : 'จบชุดแล้ว สู้ต่อนะ!';
+    $('sumStars').textContent = plain && !max ? '⭐'.repeat(Math.min(5, plain)) : `⭐ ${stars} / ${max} ดาว`;
+    $('sumGreat').textContent = great + plain;
+    $('sumClose').textContent = close;
+    $('sumRetry').textContent = retry;
+    $('sumChars').innerHTML = todo.length
+      ? todo.map((c) => `<span>${c}</span>`).join('')
+      : '<span style="background:#d8fff2">ครบทุกตัวเลย! 🎊</span>';
+    $('sumFocus').style.display = todo.length ? '' : 'none';
+    $('sumFocus').dataset.chars = todo.join('');
+    $('summary').hidden = false;
+    AUDIO.sfx.cheer();
+    confettiBurst();
+  }
+
+  function setFocus(chars) {
+    const want = [...chars];
+    focusPool = pool.filter((it) => want.includes(it.ch));
+    if (!focusPool.length) {
+      // ตัวที่ต้องฝึกอาจอยู่นอกหมวด/ระดับที่เลือกไว้ จึงดึงมาจากคลังทั้งหมด
+      focusPool = buildPool(CATEGORIES.map((c) => c.id), 3).filter((it) => want.includes(it.ch));
+    }
+    return focusPool.length;
+  }
+
   function done() {
     if (board.isEmpty()) {
       toast('ลองเขียนลงกระดานก่อนนะคะ ✍️');
@@ -351,6 +485,7 @@
 
     if (!S.check || !current || !CHECKER) {
       reward(pick(GREAT));
+      recordResult('done');
       return;
     }
 
@@ -368,29 +503,32 @@
       : r.verdict === 'close' ? 'rgba(224,135,0,.7)' : 'rgba(124,92,255,.65)';
     board.showAnswer(shownChar(current), color);
 
+    const tips = strokeHints(shownChar(current));
     const pct = `เหมือนตัวอย่าง ${r.percent}%`;
     if (r.verdict === 'great') {
-      showResult('great', 3, pick(GREAT), pct);
+      showResult('great', 3, pick(GREAT), tips[0] ? `${pct} · ${tips[0]}` : pct);
       reward(pick(GREAT));
     } else if (r.verdict === 'close') {
       let hint = pct;
       if (r.complete < r.neat - 0.12) hint = `${pct} · ยังเขียนไม่ครบนิดหน่อย`;
       else if (r.neat < r.complete - 0.12) hint = `${pct} · มีเส้นเกินออกมา`;
-      showResult('close', 2, pick(CLOSE), hint);
+      showResult('close', 2, pick(CLOSE), tips[0] ? `${hint} · ${tips[0]}` : hint);
       showChar(true);
       score++;
       streak++;
       updateScore();
       AUDIO.sfx.ding();
     } else {
-      showResult('retry', 1, pick(RETRY), `${pct} · ดูเส้นเฉลยบนกระดานนะคะ`);
+      showResult('retry', 1, pick(RETRY), tips[0] ? `${pct} · ${tips[0]}` : `${pct} · ดูเส้นเฉลยบนกระดานนะคะ`);
       showChar(true);
       streak = 0;
       updateScore();
       AUDIO.sfx.pop();
     }
 
-    if (S.autoNext && r.verdict !== 'retry') {
+    recordResult(r.verdict);
+
+    if (S.autoNext && r.verdict !== 'retry' && setCount < S.setLen) {
       timerId = setTimeout(() => newRound(true), 2200);
     }
   }
@@ -547,7 +685,11 @@
     const closeS = () => { $('settings').classList.remove('open'); $('scrim').classList.remove('show'); };
     $('settingsBtn').addEventListener('click', openS);
     $('closeSettings').addEventListener('click', closeS);
-    $('scrim').addEventListener('click', closeS);
+    $('scrim').addEventListener('click', () => {
+      closeS();
+      $('statsPanel').classList.remove('open');
+      $('scrim').classList.remove('show');
+    });
 
     // ระดับความยาก
     document.querySelectorAll('#levelSeg button').forEach((b) => {
@@ -598,6 +740,8 @@
       S.fontScale = +e.target.value;
       $('fontScaleVal').textContent = S.fontScale;
       board.fontScale = S.fontScale / 100;
+      headCache.clear();
+      applyStartDot();
       board.drawGuide();
       save();
     });
@@ -627,11 +771,87 @@
       save();
     });
 
+    // ---- ชุดฝึก ----
+    $('optSession').addEventListener('change', (e) => {
+      S.session = e.target.checked;
+      startSet();
+      save();
+      toast(S.session ? `ฝึกเป็นชุดละ ${S.setLen} ตัวนะคะ 🎯` : 'ปิดโหมดฝึกเป็นชุดแล้วค่ะ');
+    });
+    document.querySelectorAll('#setLenSeg button').forEach((b) => {
+      b.addEventListener('click', () => {
+        S.setLen = +b.dataset.len;
+        setSeg('setLenSeg', 'len', S.setLen);
+        startSet();
+        AUDIO.sfx.pop();
+        save();
+      });
+    });
+
+    // ---- ตัวช่วยลำดับเส้น ----
+    $('optStroke').addEventListener('change', (e) => {
+      S.stroke = e.target.checked;
+      applyStartDot();
+      board.drawGuide();
+      save();
+    });
+
+    // ---- หน้าสถิติ ----
+    const openStats = () => {
+      renderStats();
+      $('settings').classList.remove('open');
+      $('statsPanel').classList.add('open');
+      $('scrim').classList.add('show');
+    };
+    const closeStats = () => {
+      $('statsPanel').classList.remove('open');
+      $('scrim').classList.remove('show');
+    };
+    $('statsBtn').addEventListener('click', openStats);
+    $('closeStats').addEventListener('click', closeStats);
+    $('resetStats').addEventListener('click', () => {
+      if (STATS) STATS.reset();
+      renderStats();
+      toast('ล้างสถิติแล้วค่ะ');
+    });
+    $('practiceBtn').addEventListener('click', () => {
+      const n = setFocus($('practiceBtn').dataset.chars || '');
+      closeStats();
+      if (!n) { toast('ไม่พบตัวอักษรเหล่านั้นในคลังค่ะ'); return; }
+      startSet();
+      newRound(true);
+      toast(`ฝึกเฉพาะ ${n} ตัวที่ยังไม่คล่องนะคะ 🎯`);
+    });
+
+    // ---- สรุปผลชุดฝึก ----
+    const hideSummary = () => { $('summary').hidden = true; };
+    $('sumAgain').addEventListener('click', () => {
+      hideSummary();
+      focusPool = [];
+      startSet();
+      newRound(true);
+    });
+    $('sumFocus').addEventListener('click', () => {
+      const n = setFocus($('sumFocus').dataset.chars || '');
+      hideSummary();
+      startSet();
+      newRound(true);
+      toast(n ? `ฝึกเฉพาะ ${n} ตัวที่ยังไม่คล่องนะคะ 🎯` : 'ไม่พบตัวอักษรเหล่านั้นค่ะ');
+    });
+    $('sumClose2').addEventListener('click', () => {
+      hideSummary();
+      focusPool = [];
+      startSet();
+    });
+
     // ---- คืนค่าเริ่มต้น ----
     $('resetAll').addEventListener('click', () => {
       S = { ...DEFAULTS, cats: [...DEFAULTS.cats] };
+      focusPool = [];
+      headCache.clear();
       save();
       applyAll();
+      startSet();
       refreshPool();
       newRound(false);
       toast('คืนค่าเริ่มต้นให้แล้วค่ะ ✨');
@@ -816,6 +1036,7 @@
   }
 
   function applyFont() {
+    headCache.clear();
     const family = FONTS[S.font] || FONTS.mali;
     board.guideFont = family;
     document.documentElement.style.setProperty('--char-font', family);
@@ -865,6 +1086,8 @@
     $('optAutoClear').checked = S.autoClear;
     $('optCheck').checked = S.check;
     $('optSfx').checked = S.sfx;
+    $('optSession').checked = S.session;
+    $('optStroke').checked = S.stroke;
     $('rateRange').value = S.rate;
     $('rateVal').textContent = (+S.rate).toFixed(2);
     $('fontScale').value = S.fontScale;
@@ -890,6 +1113,7 @@
     });
 
     setSeg('penSeg', 'pen', S.pen);
+    setSeg('setLenSeg', 'len', S.setLen);
     setSeg('vowelSeg', 'vowel', S.vowelStyle);
     setSeg('lineSeg', 'line', S.lineStyle);
     applyStrict();
@@ -897,7 +1121,44 @@
     applyFont();
     applyMirror();
     applyLevel();
+    updateSetChip();
     updateScore();
+  }
+
+  /* ================= หน้าสถิติ ================= */
+  const DOW = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+
+  function renderStats() {
+    if (!STATS) return;
+    const days = STATS.lastDays(7);
+    const totals = STATS.totals();
+    const today = days[days.length - 1];
+    $('stToday').textContent = today.done;
+    $('stStreak').textContent = STATS.dayStreak();
+    $('stTotal').textContent = totals.done;
+
+    const max = Math.max(1, ...days.map((d) => d.done));
+    const H = 96;   // ความสูงสูงสุดของแท่ง เหลือที่ให้ป้ายตัวเลขด้านบน
+    $('chartBars').innerHTML = days.map((d) => {
+      const h = d.done ? Math.max(3, Math.round((d.done / max) * H)) : 3;
+      const cls = `bar${d.done ? '' : ' is-empty'}${d.isToday ? ' is-today' : ''}`;
+      return `<div class="${cls}" title="${d.date} · ${d.done} ตัว">` +
+             `${d.done ? `<b>${d.done}</b>` : ''}<i style="height:${h}px"></i></div>`;
+    }).join('');
+    $('chartLabels').innerHTML = days.map((d) =>
+      `<span class="${d.isToday ? 'is-today' : ''}">${DOW[d.day]}</span>`).join('');
+
+    const week = days.reduce((sum, d) => sum + d.done, 0);
+    $('chartNote').textContent = week
+      ? `7 วันนี้ฝึกไปแล้ว ${week} ตัว · วันนี้ ${today.done} ตัว`
+      : 'ยังไม่มีข้อมูลใน 7 วันนี้ เริ่มฝึกกันเลยค่ะ';
+
+    const need = STATS.needPractice(10);
+    $('practiceList').innerHTML = need.length
+      ? need.map((n) => `<div class="practice-item"><b>${n.ch}</b><span>${Math.round(n.rate * 100)}%</span></div>`).join('')
+      : '<p class="empty-note">ยังไม่มีตัวที่ต้องฝึกเพิ่มเลยค่ะ เก่งมาก! 🎉</p>';
+    $('practiceBtn').style.display = need.length ? '' : 'none';
+    $('practiceBtn').dataset.chars = need.map((n) => n.ch).join('');
   }
 
   /* ================= เลขเวอร์ชัน ================= */
