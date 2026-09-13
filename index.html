@@ -69,6 +69,12 @@
         <div class="hint" id="hintText">ก ไก่</div>
       </div>
 
+      <div class="result" id="resultBox">
+        <div class="result-stars" id="resultStars"></div>
+        <div class="result-text" id="resultText"></div>
+        <div class="result-sub" id="resultSub"></div>
+      </div>
+
       <div class="timer-wrap" id="timerWrap">
         <div class="timer-bar"><span id="timerFill"></span></div>
         <div class="timer-label" id="timerLabel">กำลังแสดง…</div>
@@ -87,6 +93,7 @@
     <div class="board-wrap" id="boardWrap">
       <canvas id="guideCanvas" class="layer"></canvas>
       <canvas id="inkCanvas" class="layer"></canvas>
+      <canvas id="checkCanvas" class="layer check-layer"></canvas>
       <div class="board-hint" id="boardHint">เขียนตรงนี้ได้เลย 👇</div>
     </div>
 
@@ -143,6 +150,18 @@
       <label>แสดงตัวอักษรนาน <b id="showSecVal">5</b> วินาที</label>
       <input type="range" id="showSec" min="0" max="15" step="1" value="5">
       <p class="field-note">ตั้งเป็น 0 = ไม่แสดงเลย มีแต่เสียง (ฝึกฟัง)</p>
+    </div>
+
+    <div class="field">
+      <label>ตรวจลายมือ</label>
+      <label class="switch"><input type="checkbox" id="optCheck" checked><span></span>ตรวจให้ว่าเขียนถูกไหม</label>
+      <div class="seg" id="strictSeg" style="margin-top:10px">
+        <button data-strict="easy" class="is-active">ผ่อนปรน</button>
+        <button data-strict="normal">ปกติ</button>
+        <button data-strict="strict">เข้มงวด</button>
+      </div>
+      <p class="field-note">เทียบรูปร่างที่เขียนกับตัวอย่างในเครื่อง ไม่ส่งข้อมูลออกไปไหน<br>
+        ตรวจเฉพาะรูปร่างโดยรวม ไม่ได้ดูลำดับเส้น ตัวที่คล้ายกันมาก (ค/ด, บ/ป) อาจตัดสินพลาดได้บ้าง</p>
     </div>
 
     <div class="field">
@@ -209,6 +228,7 @@
 <script src="assets/js/data.js"></script>
 <script src="assets/js/audio.js"></script>
 <script src="assets/js/board.js"></script>
+<script src="assets/js/checker.js"></script>
 <script src="assets/js/app.js"></script>
 </body>
 </html>

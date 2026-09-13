@@ -7,12 +7,14 @@
  * ------------------------------------------------------------------ */
 (function () {
   class Board {
-    constructor(wrap, guideCanvas, inkCanvas) {
+    constructor(wrap, guideCanvas, inkCanvas, checkCanvas) {
       this.wrap = wrap;
       this.guide = guideCanvas;
       this.ink = inkCanvas;
+      this.check = checkCanvas || null;
       this.gctx = guideCanvas.getContext('2d');
       this.ictx = inkCanvas.getContext('2d');
+      this.cctx = this.check ? this.check.getContext('2d') : null;
 
       this.strokes = [];
       this.redoStack = [];
@@ -46,13 +48,13 @@
       const r = this.wrap.getBoundingClientRect();
       if (!r.width || !r.height) return;
       const dpr = Math.min(window.devicePixelRatio || 1, 3);
-      [this.guide, this.ink].forEach((c) => {
+      [this.guide, this.ink, this.check].filter(Boolean).forEach((c) => {
         c.width = Math.round(r.width * dpr);
         c.height = Math.round(r.height * dpr);
         c.style.width = r.width + 'px';
         c.style.height = r.height + 'px';
       });
-      [this.gctx, this.ictx].forEach((c) => c.setTransform(dpr, 0, 0, dpr, 0, 0));
+      [this.gctx, this.ictx, this.cctx].filter(Boolean).forEach((c) => c.setTransform(dpr, 0, 0, dpr, 0, 0));
       this.w = r.width;
       this.h = r.height;
       this.drawGuide();
@@ -95,18 +97,8 @@
 
       if (!this.guideText || this.guideMode === 'none') return;
 
-      // ขนาดตัวอักษรให้พอดีกับกระดาน
-      let fontSize = this.h * 0.52;
       ctx.save();
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      const fit = () => {
-        ctx.font = `700 ${fontSize}px ${this.guideFont}`;
-        return ctx.measureText(this.guideText).width;
-      };
-      let width = fit();
-      const maxW = this.w * 0.82;
-      if (width > maxW) { fontSize *= maxW / width; width = fit(); }
+      const fontSize = this._fitText(ctx, this.guideText);
 
       if (this.guideMode === 'trace') {
         // ตัวโปร่ง: ไส้จาง ๆ + เส้นขอบชัด ให้ลากทับได้ง่าย
@@ -122,6 +114,52 @@
         ctx.fillText(this.guideText, this.w / 2, midY);
       }
       ctx.restore();
+    }
+
+    /* ตั้งฟอนต์ให้ตัวอักษรพอดีกับกระดาน แล้วคืนขนาดที่ใช้ */
+    _fitText(ctx, text) {
+      let fontSize = this.h * 0.52;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const fit = () => {
+        ctx.font = `700 ${fontSize}px ${this.guideFont}`;
+        return ctx.measureText(text).width;
+      };
+      const width = fit();
+      const maxW = this.w * 0.82;
+      if (width > maxW) { fontSize *= maxW / width; fit(); }
+      return fontSize;
+    }
+
+    /* ภาพตัวอักษรที่ถูกต้อง (ทึบล้วน) ไว้ให้ตัวตรวจลายมือเทียบ */
+    targetCanvas(text) {
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(this.w));
+      c.height = Math.max(1, Math.round(this.h));
+      const ctx = c.getContext('2d');
+      this._fitText(ctx, text);
+      ctx.fillStyle = '#000';
+      ctx.fillText(text, c.width / 2, c.height / 2);
+      return c;
+    }
+
+    /* วาดเฉลยทับลายมือชั่วคราว ให้เห็นว่าตรงไหนตรง ตรงไหนเพี้ยน */
+    showAnswer(text, color) {
+      if (!this.check || !this.w) return;
+      const ctx = this.cctx;
+      ctx.clearRect(0, 0, this.w, this.h);
+      ctx.save();
+      const fontSize = this._fitText(ctx, text);
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = Math.max(2.5, fontSize * 0.02);
+      ctx.strokeStyle = color;
+      ctx.setLineDash([]);
+      ctx.strokeText(text, this.w / 2, this.h / 2);
+      ctx.restore();
+    }
+
+    clearAnswer() {
+      if (this.check && this.w) this.cctx.clearRect(0, 0, this.w, this.h);
     }
 
     _alpha(hex, a) {
@@ -296,6 +334,7 @@
       o.fillRect(0, 0, out.width, out.height);
       o.drawImage(this.guide, 0, 0);
       o.drawImage(this.ink, 0, 0);
+      if (this.check) o.drawImage(this.check, 0, 0);
       return out.toDataURL('image/png');
     }
   }
