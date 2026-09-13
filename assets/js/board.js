@@ -30,7 +30,8 @@
 
       this.guideText = '';
       this.guideMode = 'trace';   // 'trace' | 'faint' | 'none'
-      this.showLines = true;
+      this.lineStyle = 'two';        // none | two | four | grid
+      this.fontScale = 0.52;         // ขนาดตัวอักษรเทียบกับความสูงกระดาน
       this.guideFont = '"Mali", "Sarabun", "Noto Sans Thai", sans-serif';
       this.accent = '#ee5a6f';
 
@@ -76,24 +77,7 @@
       ctx.clearRect(0, 0, this.w, this.h);
 
       const midY = this.h / 2;
-      if (this.showLines) {
-        const top = midY - this.h * 0.28;
-        const bottom = midY + this.h * 0.28;
-        // บรรทัดบน/ล่าง
-        ctx.save();
-        ctx.strokeStyle = 'rgba(99,110,150,0.28)';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([]);
-        [top, bottom].forEach((y) => {
-          ctx.beginPath(); ctx.moveTo(24, y); ctx.lineTo(this.w - 24, y); ctx.stroke();
-        });
-        // เส้นกึ่งกลางประ
-        ctx.strokeStyle = 'rgba(99,110,150,0.22)';
-        ctx.setLineDash([10, 12]);
-        ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.moveTo(24, midY); ctx.lineTo(this.w - 24, midY); ctx.stroke();
-        ctx.restore();
-      }
+      this._drawLines(midY);
 
       if (!this.guideText || this.guideMode === 'none') return;
 
@@ -116,9 +100,59 @@
       ctx.restore();
     }
 
+    /* เส้นบรรทัดช่วยกะขนาดตัวอักษร เลือกได้หลายแบบ */
+    _drawLines(midY) {
+      const ctx = this.gctx;
+      const style = this.lineStyle;
+      if (style === 'none') return;
+      const x0 = 24;
+      const x1 = this.w - 24;
+      const solid = 'rgba(99,110,150,0.28)';
+      const soft = 'rgba(99,110,150,0.20)';
+      const line = (y, color, dash, width) => {
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.setLineDash(dash || []);
+        ctx.lineWidth = width || 2;
+        ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
+        ctx.restore();
+      };
+
+      if (style === 'grid') {
+        const step = Math.max(40, this.h / 8);
+        ctx.save();
+        ctx.strokeStyle = 'rgba(99,110,150,0.14)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let x = x0; x <= x1; x += step) { ctx.moveTo(x, 10); ctx.lineTo(x, this.h - 10); }
+        for (let y = midY; y >= 10; y -= step) { ctx.moveTo(x0, y); ctx.lineTo(x1, y); }
+        for (let y = midY + step; y <= this.h - 10; y += step) { ctx.moveTo(x0, y); ctx.lineTo(x1, y); }
+        ctx.stroke();
+        ctx.restore();
+        line(midY, soft, [10, 12], 1.5);
+        return;
+      }
+
+      if (style === 'four') {
+        // แบบสมุดคัดลายมือ: เส้นบน เส้นที่สอง เส้นฐาน เส้นล่าง
+        const h = this.h * 0.34;
+        [-1, -1 / 3, 1 / 3, 1].forEach((k, i) => {
+          const y = midY + k * h;
+          const outer = i === 0 || i === 3;
+          line(y, outer ? solid : soft, outer ? [] : [8, 10], outer ? 2 : 1.5);
+        });
+        return;
+      }
+
+      // แบบสองเส้น (ค่าเริ่มต้น)
+      line(midY - this.h * 0.28, solid);
+      line(midY + this.h * 0.28, solid);
+      line(midY, soft, [10, 12], 1.5);
+    }
+
     /* ตั้งฟอนต์ให้ตัวอักษรพอดีกับกระดาน แล้วคืนขนาดที่ใช้ */
     _fitText(ctx, text) {
-      let fontSize = this.h * 0.52;
+      let fontSize = this.h * this.fontScale;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       const fit = () => {

@@ -14,7 +14,7 @@
 <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Mali:wght@400;500;600;700&family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Mali:wght@400;500;600;700&family=Itim&family=Sarabun:wght@400;600;700&family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
@@ -131,6 +131,9 @@
   </div>
 
   <div class="drawer-body">
+
+    <h3 class="sec">🎮 การเล่น</h3>
+
     <div class="field">
       <label>ระดับความยาก</label>
       <div class="seg" id="levelSeg">
@@ -152,17 +155,36 @@
       <p class="field-note">ตั้งเป็น 0 = ไม่แสดงเลย มีแต่เสียง (ฝึกฟัง)</p>
     </div>
 
+    <div class="field toggles">
+      <label class="switch"><input type="checkbox" id="optListen"><span></span>ฟังอย่างเดียว (ซ่อนตัวอักษร)</label>
+      <label class="switch"><input type="checkbox" id="optAutoNext"><span></span>สุ่มตัวใหม่อัตโนมัติเมื่อทำเสร็จ</label>
+      <label class="switch"><input type="checkbox" id="optAutoClear" checked><span></span>ล้างกระดานเมื่อสุ่มตัวใหม่</label>
+    </div>
+
+    <h3 class="sec">✅ การตรวจลายมือ</h3>
+
     <div class="field">
-      <label>ตรวจลายมือ</label>
       <label class="switch"><input type="checkbox" id="optCheck" checked><span></span>ตรวจให้ว่าเขียนถูกไหม</label>
-      <div class="seg" id="strictSeg" style="margin-top:10px">
+      <div class="seg" id="strictSeg" style="margin-top:12px">
         <button data-strict="easy" class="is-active">ผ่อนปรน</button>
         <button data-strict="normal">ปกติ</button>
         <button data-strict="strict">เข้มงวด</button>
+        <button data-strict="custom">กำหนดเอง</button>
       </div>
+
+      <div id="customBox" class="custom-box" hidden>
+        <label class="mini">⭐⭐⭐ ถูกต้อง เมื่อเหมือนตั้งแต่ <b id="greatVal">73</b>%</label>
+        <input type="range" id="rangeGreat" min="40" max="100" step="1" value="73">
+        <label class="mini">⭐⭐ ใกล้เคียง เมื่อเหมือนตั้งแต่ <b id="closeVal">56</b>%</label>
+        <input type="range" id="rangeClose" min="20" max="100" step="1" value="56">
+        <p class="field-note">ตัวเลขนี้คือ % ที่โชว์ในกล่องผลตรวจ ปรับแล้วลองกดตรวจดูได้เลย</p>
+      </div>
+
       <p class="field-note">เทียบรูปร่างที่เขียนกับตัวอย่างในเครื่อง ไม่ส่งข้อมูลออกไปไหน<br>
         ตรวจเฉพาะรูปร่างโดยรวม ไม่ได้ดูลำดับเส้น ตัวที่คล้ายกันมาก (ค/ด, บ/ป) อาจตัดสินพลาดได้บ้าง</p>
     </div>
+
+    <h3 class="sec">✏️ ตัวอักษรและกระดาน</h3>
 
     <div class="field">
       <label>รูปแบบสระ / วรรณยุกต์</label>
@@ -170,7 +192,6 @@
         <button data-vowel="or" class="is-active">ใช้ตัว อ<small>อา · ไอ · เอา</small></button>
         <button data-vowel="dash">ใช้ขีด<small>-า · ไ- · เ-า</small></button>
       </div>
-      <p class="field-note">แบบขีดคือรูปที่ใช้ในแบบเรียน บอกตำแหน่งที่พยัญชนะจะมาวาง</p>
     </div>
 
     <div class="field">
@@ -183,16 +204,29 @@
     </div>
 
     <div class="field">
-      <label>ความเร็วเสียงอ่าน <b id="rateVal">0.85</b>x</label>
-      <input type="range" id="rateRange" min="0.5" max="1.2" step="0.05" value="0.85">
+      <label>แบบตัวอักษร</label>
+      <div class="seg" id="fontSeg">
+        <button data-font="mali" class="is-active" style="font-family:'Mali'">มาลี</button>
+        <button data-font="itim" style="font-family:'Itim'">อิทิม</button>
+        <button data-font="sarabun" style="font-family:'Sarabun'">สารบรรณ</button>
+      </div>
+      <p class="field-note">ทุกแบบเป็นตัวมีหัว เขียนตามได้ถูกต้องตามหลักการเขียนไทย</p>
     </div>
 
-    <div class="field toggles">
-      <label class="switch"><input type="checkbox" id="optListen"><span></span>ฟังอย่างเดียว (ซ่อนตัวอักษร)</label>
-      <label class="switch"><input type="checkbox" id="optAutoNext"><span></span>สุ่มตัวใหม่อัตโนมัติเมื่อกดเสร็จ</label>
-      <label class="switch"><input type="checkbox" id="optLines" checked><span></span>แสดงเส้นบรรทัด</label>
-      <label class="switch"><input type="checkbox" id="optPressure" checked><span></span>ใช้แรงกด Apple Pencil</label>
-      <label class="switch"><input type="checkbox" id="optAutoClear" checked><span></span>ล้างกระดานเมื่อสุ่มตัวใหม่</label>
+    <div class="field">
+      <label>ขนาดตัวอักษรบนกระดาน <b id="fontScaleVal">52</b>%</label>
+      <input type="range" id="fontScale" min="30" max="80" step="1" value="52">
+    </div>
+
+    <div class="field">
+      <label>เส้นบรรทัด</label>
+      <div class="seg" id="lineSeg">
+        <button data-line="two" class="is-active">2 เส้น</button>
+        <button data-line="four">4 เส้น</button>
+        <button data-line="grid">ตาราง</button>
+        <button data-line="none">ไม่มี</button>
+      </div>
+      <p class="field-note">“4 เส้น” เหมือนสมุดคัดลายมือ ช่วยกะความสูงหัวและหางตัวอักษร</p>
     </div>
 
     <div class="field">
@@ -205,8 +239,39 @@
       <p class="field-note">“อัตโนมัติ” จะกันฝ่ามือให้เอง เมื่อตรวจพบ Apple Pencil</p>
     </div>
 
+    <div class="field toggles">
+      <label class="switch"><input type="checkbox" id="optPressure" checked><span></span>ใช้แรงกด Apple Pencil</label>
+      <label class="switch"><input type="checkbox" id="optMirror"><span></span>สลับด้าน (ถนัดซ้าย)</label>
+    </div>
+
+    <h3 class="sec">🔊 เสียง</h3>
+
     <div class="field">
+      <label>ความเร็วเสียงอ่าน <b id="rateVal">0.85</b>x</label>
+      <input type="range" id="rateRange" min="0.5" max="1.2" step="0.05" value="0.85">
+    </div>
+
+    <div class="field">
+      <label>เสียงผู้อ่านภาษาไทย</label>
+      <select id="voiceSel" class="select"><option value="">อัตโนมัติ</option></select>
+      <p class="field-note">โหลดเสียงคุณภาพสูงเพิ่มได้ที่ ตั้งค่า → ตัวช่วยการเข้าถึง → เนื้อหาที่พูด → เสียง</p>
+    </div>
+
+    <div class="field">
+      <label><span id="repeatLabel">อ่านซ้ำอัตโนมัติ</span> <b id="repeatVal">ปิด</b></label>
+      <input type="range" id="repeatSec" min="0" max="20" step="1" value="0">
+      <p class="field-note">ช่วยตอนโหมดฟังอย่างเดียว เด็กจะได้ยินซ้ำระหว่างเขียน</p>
+    </div>
+
+    <div class="field toggles">
+      <label class="switch"><input type="checkbox" id="optSfx" checked><span></span>เสียงประกอบ (เสียงกด เสียงชม)</label>
+    </div>
+
+    <h3 class="sec">⚙️ อื่น ๆ</h3>
+
+    <div class="field btn-row">
       <button id="resetScore" class="ghost-btn">ล้างคะแนน</button>
+      <button id="resetAll" class="ghost-btn danger">คืนค่าเริ่มต้นทั้งหมด</button>
     </div>
 
     <div class="version-box">

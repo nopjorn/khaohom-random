@@ -15,6 +15,7 @@
   --radius:26px;
   --shadow:0 10px 30px rgba(60,40,120,.12);
   --shadow-lg:0 18px 50px rgba(60,40,120,.20);
+  --char-font:"Mali","Sarabun","Noto Sans Thai",sans-serif;
   --gut:12px;               /* ระยะขอบรอบนอก ปรับเป็น 0 ได้ถ้าอยากให้ชนขอบจอสนิท */
   --safe-t:env(safe-area-inset-top,0px);
   --safe-b:env(safe-area-inset-bottom,0px);
@@ -109,6 +110,7 @@ body::after{width:160px;height:160px;right:-50px;top:35%;background:radial-gradi
 .icon-btn.is-on span{color:#fff;}
 
 /* ================= พื้นที่หลัก ================= */
+.stage.mirror{flex-direction:row-reverse;}
 .stage{
   flex:1 1 auto;min-height:0;
   position:relative;z-index:2;display:flex;gap:var(--gut);
@@ -140,6 +142,7 @@ body::after{width:160px;height:160px;right:-50px;top:35%;background:radial-gradi
   width:100%;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;position:relative;
 }
 .char{
+  font-family:var(--char-font);
   font-size:clamp(80px,15vw,190px);line-height:1;font-weight:700;
   background:linear-gradient(160deg,var(--purple),var(--pink) 60%,var(--orange));
   -webkit-background-clip:text;background-clip:text;color:transparent;
@@ -280,7 +283,24 @@ body::after{width:160px;height:160px;right:-50px;top:35%;background:radial-gradi
 .close-btn{border:0;background:#f4f1ff;border-radius:50%;width:38px;height:38px;font-size:17px;cursor:pointer;color:var(--muted);}
 .drawer-body{padding:18px 22px calc(30px + var(--safe-b));overflow-y:auto;-webkit-overflow-scrolling:touch;}
 
+.sec{
+  margin:4px 0 14px;font-size:14px;font-weight:700;color:var(--purple);
+  padding-bottom:8px;border-bottom:2px solid #f2effd;letter-spacing:.3px;
+}
+.sec:not(:first-child){margin-top:26px;}
 .field{margin-bottom:24px;}
+.field .mini{display:block;font-size:13px;font-weight:600;color:var(--muted);margin:12px 0 6px;}
+.custom-box{background:#f8f6ff;border-radius:16px;padding:12px 14px 14px;margin-top:12px;}
+.custom-box .field-note{margin-top:10px;}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;}
+.ghost-btn.danger{color:#e05a6f;border-color:#ffe0e6;}
+.select{
+  width:100%;font-family:inherit;font-size:14px;font-weight:600;color:var(--ink);
+  border:2px solid #eee9ff;border-radius:14px;padding:11px 12px;background:#fff;
+  -webkit-appearance:none;appearance:none;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8'><path d='M1 1l5 5 5-5' fill='none' stroke='%237a819c' stroke-width='2'/></svg>");
+  background-repeat:no-repeat;background-position:right 14px center;
+}
 .field>label{display:block;font-weight:700;font-size:15px;margin-bottom:9px;}
 .field-note{color:var(--muted);font-size:12.5px;margin:8px 0 0;line-height:1.6;}
 
@@ -365,7 +385,8 @@ input[type=range]::-webkit-slider-thumb{
 
 /* ================= จอแนวตั้ง / จอเล็ก ================= */
 @media (max-aspect-ratio:1/1){
-  .stage{flex-direction:column;}
+  .stage.mirror{flex-direction:row-reverse;}
+.stage{flex-direction:column;}
   .prompt-card{flex:0 0 auto;max-height:32%;}
   .prompt-inner{flex-direction:row;align-items:center;gap:12px;padding:12px;}
   .cat-badge{order:-1;align-self:center;flex:0 0 auto;}

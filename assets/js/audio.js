@@ -7,6 +7,8 @@
   let unlocked = false;
   let voices = [];
   let rate = 0.85;
+  let sfxOn = true;
+  let voiceName = '';
 
   function loadVoices() {
     if (!('speechSynthesis' in window)) return;
@@ -17,8 +19,18 @@
     window.speechSynthesis.onvoiceschanged = loadVoices;
   }
 
+  function listVoices(lang) {
+    if (!voices.length) loadVoices();
+    const base = (lang || '').toLowerCase().split('-')[0];
+    return voices.filter((v) => !base || (v.lang || '').toLowerCase().startsWith(base));
+  }
+
   function pickVoice(lang) {
     if (!voices.length) loadVoices();
+    if (voiceName) {
+      const chosen = voices.find((v) => v.name === voiceName);
+      if (chosen && (!lang || (chosen.lang || '').toLowerCase().startsWith(lang.toLowerCase().split('-')[0]))) return chosen;
+    }
     const want = lang.toLowerCase();
     const base = want.split('-')[0];
     return (
@@ -83,10 +95,12 @@
   }
 
   function setRate(r) { rate = r; }
+  function setSfx(on) { sfxOn = !!on; }
+  function setVoice(name) { voiceName = name || ''; }
 
   /* ----- เสียงประกอบสังเคราะห์ ----- */
   function tone(freq, start, dur, type = 'sine', vol = 0.18) {
-    if (!ctx) return;
+    if (!ctx || !sfxOn) return;
     const o = ctx.createOscillator();
     const g = ctx.createGain();
     o.type = type;
@@ -109,5 +123,5 @@
     tick() { tone(1200, 0, 0.04, 'square', 0.05); },
   };
 
-  window.KH_AUDIO = { unlock, speak, sfx, setRate, hasVoiceFor, get unlocked() { return unlocked; } };
+  window.KH_AUDIO = { unlock, speak, sfx, setRate, setSfx, setVoice, listVoices, hasVoiceFor, get unlocked() { return unlocked; } };
 })();
