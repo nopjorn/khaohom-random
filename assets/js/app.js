@@ -20,6 +20,8 @@
     autoClear: true,
     pen: 'auto',
     vowelStyle: 'or',
+    check: true,
+    strict: 'easy',
     color: '#2d3142',
     size: 14,
   };
@@ -71,7 +73,8 @@
   const timerLabel = $('timerLabel');
   const boardHint = $('boardHint');
 
-  const board = new window.KH_Board($('boardWrap'), $('guideCanvas'), $('inkCanvas'));
+  const board = new window.KH_Board($('boardWrap'), $('guideCanvas'), $('inkCanvas'), $('checkCanvas'));
+  const CHECKER = window.KH_Checker;
 
   let pool = [];
   let current = null;
@@ -182,6 +185,7 @@
     hintText.textContent = current.hint || '';
 
     board.accent = current.color;
+    hideResult();
     if (S.autoClear) board.clear();
     board.setGuide(shownChar(current), effectiveGuide());
     boardHint.classList.toggle('hide', !board.isEmpty());
@@ -277,6 +281,24 @@
   }
 
   /* ================= กดว่าเขียนเสร็จ ================= */
+  const GREAT = ['ถูกต้อง! เก่งมาก', 'เขียนสวยมาก!', 'เยี่ยมไปเลย!', 'ถูกต้องค่ะ!', 'สุดยอด!'];
+  const CLOSE = ['ใกล้เคียงแล้ว!', 'เกือบได้แล้ว!', 'ดีขึ้นเยอะเลย!', 'อีกนิดเดียว!'];
+  const RETRY = ['ลองอีกครั้งนะ', 'ดูตัวอย่างแล้วลองใหม่นะคะ', 'ไม่เป็นไร ลองอีกทีค่ะ'];
+  const pick = (a) => a[Math.floor(Math.random() * a.length)];
+
+  function hideResult() {
+    $('resultBox').className = 'result';
+    board.clearAnswer();
+  }
+
+  function showResult(kind, stars, text, sub) {
+    const box = $('resultBox');
+    box.className = `result show ${kind}`;
+    $('resultStars').textContent = '⭐'.repeat(stars) + '☆'.repeat(3 - stars);
+    $('resultText').textContent = text;
+    $('resultSub').textContent = sub || '';
+  }
+
   function done() {
     if (board.isEmpty()) {
       toast('ลองเขียนลงกระดานก่อนนะคะ ✍️');
@@ -285,24 +307,77 @@
     }
     stopTimers();
     timerWrap.classList.remove('show');
+
+    if (!S.check || !current || !CHECKER) {
+      reward(pick(GREAT));
+      return;
+    }
+
+    const target = board.targetCanvas(shownChar(current));
+    const r = CHECKER.check(board.ink, target, S.strict);
+
+    if (r.verdict === 'too-small') {
+      toast('เขียนตัวใหญ่ขึ้นอีกนิดนะคะ จะได้ตรวจให้ได้ 🔍');
+      AUDIO.sfx.pop();
+      return;
+    }
+
+    // ทาบเฉลยให้เห็นว่าต่างกันตรงไหน
+    const color = r.verdict === 'great' ? 'rgba(15,155,125,.72)'
+      : r.verdict === 'close' ? 'rgba(224,135,0,.7)' : 'rgba(124,92,255,.65)';
+    board.showAnswer(shownChar(current), color);
+
+    const pct = `เหมือนตัวอย่าง ${r.percent}%`;
+    if (r.verdict === 'great') {
+      showResult('great', 3, pick(GREAT), pct);
+      reward(pick(GREAT));
+    } else if (r.verdict === 'close') {
+      let hint = pct;
+      if (r.complete < r.neat - 0.12) hint = `${pct} · ยังเขียนไม่ครบนิดหน่อย`;
+      else if (r.neat < r.complete - 0.12) hint = `${pct} · มีเส้นเกินออกมา`;
+      showResult('close', 2, pick(CLOSE), hint);
+      showChar(true);
+      score++;
+      streak++;
+      updateScore();
+      AUDIO.sfx.ding();
+    } else {
+      showResult('retry', 1, pick(RETRY), `${pct} · ดูเส้นเฉลยบนกระดานนะคะ`);
+      showChar(true);
+      streak = 0;
+      updateScore();
+      AUDIO.sfx.pop();
+    }
+
+    if (S.autoNext && r.verdict !== 'retry') {
+      timerId = setTimeout(() => newRound(true), 2200);
+    }
+  }
+
+  /* ให้รางวัลเมื่อเขียนถูก */
+  function reward(text) {
     score++;
     streak++;
-    $('scoreVal').textContent = score;
-    $('streakVal').textContent = streak;
-    save();
-
-    praise(PRAISES[Math.floor(Math.random() * PRAISES.length)]);
+    updateScore();
+    praise(text);
     confettiBurst();
     AUDIO.sfx.cheer();
 
-    // เฉลยให้เห็นตัวจริงสักครู่
     showChar(true);
     if (current) board.setGuide(shownChar(current), S.guide === 'none' ? 'faint' : S.guide);
 
-    timerId = setTimeout(() => {
-      if (S.autoNext) newRound(true);
-      else if (current) board.setGuide(shownChar(current), effectiveGuide());
-    }, 1500);
+    if (!S.check) {
+      timerId = setTimeout(() => {
+        if (S.autoNext) newRound(true);
+        else if (current) board.setGuide(shownChar(current), effectiveGuide());
+      }, 1500);
+    }
+  }
+
+  function updateScore() {
+    $('scoreVal').textContent = score;
+    $('streakVal').textContent = streak;
+    save();
   }
 
   /* ================= เอฟเฟกต์ ================= */
@@ -458,6 +533,22 @@
       });
     });
 
+    // ตรวจลายมือ
+    $('optCheck').addEventListener('change', (e) => {
+      S.check = e.target.checked;
+      applyCheckMode();
+      save();
+      toast(S.check ? 'จะตรวจให้ว่าเขียนถูกไหมนะคะ 🔍' : 'ปิดการตรวจแล้ว เขียนเล่นได้สบาย ๆ ค่ะ');
+    });
+    document.querySelectorAll('#strictSeg button').forEach((b) => {
+      b.addEventListener('click', () => {
+        S.strict = b.dataset.strict;
+        setSeg('strictSeg', 'strict', S.strict);
+        AUDIO.sfx.pop();
+        save();
+      });
+    });
+
     // รูปแบบสระ / วรรณยุกต์
     document.querySelectorAll('#vowelSeg button').forEach((b) => {
       b.addEventListener('click', () => {
@@ -539,7 +630,10 @@
     });
     $('saveBtn').addEventListener('click', saveImage);
 
-    board.onStrokeStart = () => { boardHint.classList.add('hide'); };
+    board.onStrokeStart = () => {
+      boardHint.classList.add('hide');
+      hideResult();
+    };
 
     // ปุ่มลัดบนคีย์บอร์ด (เผื่อใช้กับ Magic Keyboard)
     addEventListener('keydown', (e) => {
@@ -582,6 +676,11 @@
       }
     }
     toast(S.listenOnly ? 'โหมดฟังอย่างเดียว 👂 ตั้งใจฟังแล้วเขียนเลย!' : 'กลับมาแสดงตัวอักษรแล้วค่ะ 👀');
+  }
+
+  function applyCheckMode() {
+    $('doneBtn').textContent = S.check ? 'ตรวจให้หน่อย 🔍' : 'เขียนเสร็จแล้ว! ✅';
+    if (!S.check) hideResult();
   }
 
   function applyLevel() {
@@ -651,6 +750,9 @@
     );
     setSeg('penSeg', 'pen', S.pen);
     setSeg('vowelSeg', 'vowel', S.vowelStyle);
+    setSeg('strictSeg', 'strict', S.strict);
+    $('optCheck').checked = S.check;
+    applyCheckMode();
     showVersion();
     applyLevel();
     refreshPool();
