@@ -1,5 +1,5 @@
 /* Service worker เล็ก ๆ ให้เล่นต่อได้แม้เน็ตหลุด (ใช้ path แบบ relative จึงรองรับ GitHub Pages subpath) */
-const CACHE = 'khaohom-writing-v1';
+const CACHE = 'khaohom-writing-v2';
 const ASSETS = [
   './',
   './index.html',
