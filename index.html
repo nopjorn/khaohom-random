@@ -41,9 +41,14 @@
     <div class="score-chip" title="จำนวนที่เขียนแล้ว">⭐ <b id="scoreVal">0</b></div>
     <div class="score-chip" title="เขียนต่อเนื่อง">🔥 <b id="streakVal">0</b></div>
     <div class="score-chip level-chip" id="levelChip" title="ระดับความยาก">ระดับ <b id="levelVal">1</b></div>
+    <div class="score-chip set-chip" id="setChip" hidden title="ความคืบหน้าของชุดฝึก">
+      ข้อ <b id="setNow">0</b>/<b id="setTotal">10</b>
+      <span class="set-bar"><i id="setFill"></i></span>
+    </div>
   </div>
 
   <div class="top-actions">
+    <button id="statsBtn" class="icon-btn" title="สถิติการฝึก">📊<span>สถิติ</span></button>
     <button id="listenOnlyBtn" class="icon-btn" title="ฟังอย่างเดียว (ซ่อนตัวอักษร)">🙈<span>ฟังอย่างเดียว</span></button>
     <button id="fullBtn" class="icon-btn" title="เต็มจอ">⛶<span>เต็มจอ</span></button>
     <button id="settingsBtn" class="icon-btn" title="ตั้งค่า">⚙️<span>ตั้งค่า</span></button>
@@ -161,6 +166,17 @@
       <label class="switch"><input type="checkbox" id="optAutoClear" checked><span></span>ล้างกระดานเมื่อสุ่มตัวใหม่</label>
     </div>
 
+    <div class="field">
+      <label class="switch"><input type="checkbox" id="optSession"><span></span>ฝึกเป็นชุด แล้วสรุปผลให้ดู</label>
+      <div class="seg" id="setLenSeg" style="margin-top:12px">
+        <button data-len="5">5 ตัว</button>
+        <button data-len="10" class="is-active">10 ตัว</button>
+        <button data-len="15">15 ตัว</button>
+        <button data-len="20">20 ตัว</button>
+      </div>
+      <p class="field-note">ครบชุดแล้วจะสรุปให้ว่าทำได้กี่ดาว และตัวไหนควรฝึกเพิ่ม</p>
+    </div>
+
     <h3 class="sec">✅ การตรวจลายมือ</h3>
 
     <div class="field">
@@ -182,6 +198,11 @@
 
       <p class="field-note">เทียบรูปร่างที่เขียนกับตัวอย่างในเครื่อง ไม่ส่งข้อมูลออกไปไหน<br>
         ตรวจเฉพาะรูปร่างโดยรวม ไม่ได้ดูลำดับเส้น ตัวที่คล้ายกันมาก (ค/ด, บ/ป) อาจตัดสินพลาดได้บ้าง</p>
+    </div>
+
+    <div class="field toggles">
+      <label class="switch"><input type="checkbox" id="optStroke" checked><span></span>ตัวช่วยลำดับเส้น (เริ่มจากหัว)</label>
+      <p class="field-note">แสดงจุด 🌀 ตรงหัวตัวอักษรให้รู้ว่าเริ่มเขียนตรงไหน และเตือนอย่างอ่อน ๆ เมื่อไม่ได้เริ่มจากหัวหรือยกปากกาบ่อยเกินไป — เป็นคำแนะนำเท่านั้น ไม่มีผลกับดาว</p>
     </div>
 
     <h3 class="sec">✏️ ตัวอักษรและกระดาน</h3>
@@ -271,6 +292,7 @@
 
     <div class="field btn-row">
       <button id="resetScore" class="ghost-btn">ล้างคะแนน</button>
+      <button id="resetStats" class="ghost-btn">ล้างสถิติ</button>
       <button id="resetAll" class="ghost-btn danger">คืนค่าเริ่มต้นทั้งหมด</button>
     </div>
 
@@ -284,6 +306,56 @@
 </aside>
 <div id="scrim" class="scrim"></div>
 
+<!-- ===================== แผงสถิติ ===================== -->
+<aside id="statsPanel" class="drawer" aria-hidden="true">
+  <div class="drawer-head">
+    <h2>📊 สถิติการฝึก</h2>
+    <button id="closeStats" class="close-btn">✕</button>
+  </div>
+  <div class="drawer-body">
+    <div class="stat-tiles">
+      <div class="tile"><span class="tile-num" id="stToday">0</span><span class="tile-label">วันนี้</span></div>
+      <div class="tile"><span class="tile-num" id="stStreak">0</span><span class="tile-label">วันติดต่อกัน</span></div>
+      <div class="tile"><span class="tile-num" id="stTotal">0</span><span class="tile-label">รวมทั้งหมด</span></div>
+    </div>
+
+    <div class="field">
+      <label>7 วันล่าสุด</label>
+      <figure class="chart" id="chart7">
+        <div class="bars" id="chartBars"></div>
+        <div class="bar-labels" id="chartLabels"></div>
+      </figure>
+      <p class="field-note" id="chartNote"></p>
+    </div>
+
+    <div class="field">
+      <label>ตัวที่ควรฝึกเพิ่ม</label>
+      <div class="practice-list" id="practiceList"></div>
+      <button id="practiceBtn" class="ghost-btn" style="margin-top:12px">ฝึกเฉพาะตัวเหล่านี้</button>
+    </div>
+  </div>
+</aside>
+
+<!-- ===================== สรุปผลชุดฝึก ===================== -->
+<div id="summary" class="overlay summary-overlay" hidden>
+  <div class="summary-card">
+    <div class="summary-emoji" id="sumEmoji">🎉</div>
+    <h2 id="sumTitle">จบชุดแล้ว!</h2>
+    <div class="summary-stars" id="sumStars"></div>
+    <div class="summary-grid">
+      <div><b id="sumGreat">0</b><span>ถูกต้อง</span></div>
+      <div><b id="sumClose">0</b><span>ใกล้เคียง</span></div>
+      <div><b id="sumRetry">0</b><span>ต้องฝึกอีก</span></div>
+    </div>
+    <div class="summary-chars" id="sumChars"></div>
+    <div class="summary-actions">
+      <button id="sumAgain" class="big-btn">ฝึกชุดใหม่</button>
+      <button id="sumFocus" class="ghost-btn">ฝึกเฉพาะตัวที่ยังไม่คล่อง</button>
+      <button id="sumClose2" class="ghost-btn">ปิด</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===================== เอฟเฟกต์ / ป้ายแจ้ง ===================== -->
 <canvas id="confetti" class="confetti"></canvas>
 <div id="toast" class="toast"></div>
@@ -294,6 +366,7 @@
 <script src="assets/js/audio.js"></script>
 <script src="assets/js/board.js"></script>
 <script src="assets/js/checker.js"></script>
+<script src="assets/js/stats.js"></script>
 <script src="assets/js/app.js"></script>
 </body>
 </html>

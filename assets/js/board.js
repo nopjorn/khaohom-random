@@ -30,6 +30,7 @@
 
       this.guideText = '';
       this.guideMode = 'trace';   // 'trace' | 'faint' | 'none'
+      this.startDot = null;          // จุดบอก "เริ่มเขียนตรงนี้" (หัวตัวอักษร)
       this.lineStyle = 'two';        // none | two | four | grid
       this.fontScale = 0.52;         // ขนาดตัวอักษรเทียบกับความสูงกระดาน
       this.guideFont = '"Mali", "Sarabun", "Noto Sans Thai", sans-serif';
@@ -97,6 +98,24 @@
         ctx.fillStyle = this._alpha(this.accent, 0.14);
         ctx.fillText(this.guideText, this.w / 2, midY);
       }
+      ctx.restore();
+      this._drawStartDot();
+    }
+
+    /* จุดเขียว ๆ บอกว่าให้เริ่มลากเส้นตรงหัวตัวอักษร */
+    _drawStartDot() {
+      const dot = this.startDot;
+      if (!dot || this.guideMode === 'none') return;
+      const ctx = this.gctx;
+      const r = Math.max(7, this.h * 0.022);
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(dot.x, dot.y, r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(15,155,125,.9)';
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#fff';
+      ctx.stroke();
       ctx.restore();
     }
 

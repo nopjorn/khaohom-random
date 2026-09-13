@@ -171,5 +171,94 @@
     };
   }
 
-  window.KH_Checker = { check, LEVELS, resolveLevel };
+  /* ------------------------------------------------------------------
+   * findHead(targetCanvas) — หา "หัว" ของตัวอักษรไทย
+   * ตัวอักษรไทยเริ่มเขียนจากหัวเสมอ หัวคือรูวงกลมเล็ก ๆ ที่ปิดล้อมอยู่ในตัวอักษร
+   * จึงหาได้ด้วยการไล่ระบายพื้นหลังจากขอบเข้ามา ส่วนที่เหลือคือรูในตัวอักษร
+   * แล้วเลือกรูที่เล็กและกลมที่สุด คืนพิกัดเป็นสัดส่วน 0..1 ของ canvas
+   * ถ้าไม่เจอรูที่เข้าเกณฑ์ (เช่น ตัวเลข A-Z หรือคำยาว ๆ) คืน null
+   * ------------------------------------------------------------------ */
+  function findHead(canvas) {
+    const W = canvas.width;
+    const H = canvas.height;
+    if (!W || !H) return null;
+    const step = Math.max(1, Math.round(H / 140));        // ย่อความละเอียดให้คำนวณเร็ว
+    const w = Math.floor(W / step);
+    const h = Math.floor(H / step);
+    const src = canvas.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, W, H).data;
+
+    const ink = new Uint8Array(w * h);
+    let minX = w, minY = h, maxX = -1, maxY = -1, inkCount = 0;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const a = src[((y * step) * W + x * step) * 4 + 3];
+        if (a > ALPHA) {
+          ink[y * w + x] = 1;
+          inkCount++;
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+    if (maxX < 0 || !inkCount) return null;
+    const bboxArea = (maxX - minX + 1) * (maxY - minY + 1);
+
+    // ระบายพื้นหลังจากขอบเข้ามา ช่องที่ไม่โดนระบายคือรูในตัวอักษร
+    const seen = new Uint8Array(w * h);
+    const stack = [];
+    for (let x = 0; x < w; x++) { stack.push(x, 0, x, h - 1); }
+    for (let y = 0; y < h; y++) { stack.push(0, y, w - 1, y); }
+    while (stack.length) {
+      const y = stack.pop();
+      const x = stack.pop();
+      if (x < 0 || y < 0 || x >= w || y >= h) continue;
+      const i = y * w + x;
+      if (seen[i] || ink[i]) continue;
+      seen[i] = 1;
+      stack.push(x + 1, y, x - 1, y, x, y + 1, x, y - 1);
+    }
+
+    // จัดกลุ่มรู แล้วเลือกรูที่เล็ก กลม และอยู่ค่อนไปทางขอบตัวอักษร
+    let best = null;
+    for (let y0 = 0; y0 < h; y0++) {
+      for (let x0 = 0; x0 < w; x0++) {
+        const i0 = y0 * w + x0;
+        if (seen[i0] || ink[i0]) continue;
+        let area = 0, sx = 0, sy = 0;
+        let hx0 = x0, hx1 = x0, hy0 = y0, hy1 = y0;
+        const q = [x0, y0];
+        seen[i0] = 1;
+        while (q.length) {
+          const y = q.pop();
+          const x = q.pop();
+          area++; sx += x; sy += y;
+          if (x < hx0) hx0 = x; if (x > hx1) hx1 = x;
+          if (y < hy0) hy0 = y; if (y > hy1) hy1 = y;
+          [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => {
+            const X = x + dx, Y = y + dy;
+            if (X < 0 || Y < 0 || X >= w || Y >= h) return;
+            const i = Y * w + X;
+            if (seen[i] || ink[i]) return;
+            seen[i] = 1;
+            q.push(X, Y);
+          });
+        }
+        const ratio = area / bboxArea;
+        const bw = hx1 - hx0 + 1;
+        const bh = hy1 - hy0 + 1;
+        const roundness = Math.min(bw, bh) / Math.max(bw, bh);
+        // หัวต้องเป็นรูเล็ก ๆ ค่อนข้างกลม ไม่ใช่ช่องว่างใหญ่กลางตัวอักษร
+        if (ratio > 0.055 || ratio < 0.0008 || roundness < 0.45) continue;
+        if (!best || area < best.area) {
+          best = { area, x: (sx / area) * step, y: (sy / area) * step };
+        }
+      }
+    }
+    if (!best) return null;
+    return { x: best.x / W, y: best.y / H, size: Math.sqrt(best.area) * step / H };
+  }
+
+  window.KH_Checker = { check, findHead, LEVELS, resolveLevel };
 })();

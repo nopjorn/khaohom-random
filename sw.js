@@ -10,6 +10,7 @@ const ASSETS = [
   './assets/js/audio.js',
   './assets/js/board.js',
   './assets/js/checker.js',
+  './assets/js/stats.js',
   './assets/js/app.js',
   './assets/icons/icon.svg',
   './assets/icons/icon-192.png',

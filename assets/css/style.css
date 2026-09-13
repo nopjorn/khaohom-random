@@ -22,6 +22,7 @@
 }
 
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+[hidden]{display:none !important;}   /* กัน display:flex ของ .overlay มาทับ */
 html{height:100%;}
 body{
   position:fixed;inset:0;margin:0;overflow:hidden;
@@ -354,6 +355,72 @@ input[type=range]::-webkit-slider-thumb{
 .version-meta{font-size:11.5px;color:#a9a3c4;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}
 .credit{text-align:center;color:#c9c4dd;font-size:12.5px;margin-top:10px;}
 
+/* ---------- ความคืบหน้าของชุดฝึก ---------- */
+.set-chip{display:flex;align-items:center;gap:7px;background:linear-gradient(135deg,#eaf7f2,#e6f0ff);}
+.set-bar{display:block;width:54px;height:7px;border-radius:999px;background:#dfe6f5;overflow:hidden;}
+.set-bar i{display:block;height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,var(--mint),var(--blue));transition:width .35s ease;}
+
+/* ---------- แผงสถิติ ---------- */
+.stat-tiles{display:flex;gap:10px;margin-bottom:26px;}
+.tile{
+  flex:1;background:#f8f6ff;border-radius:18px;padding:14px 10px;text-align:center;
+  display:flex;flex-direction:column;gap:2px;
+}
+.tile-num{font-size:26px;font-weight:700;color:var(--purple);line-height:1.1;}
+.tile-label{font-size:11.5px;color:var(--muted);font-weight:600;}
+
+/* กราฟแท่ง 7 วัน — ชุดข้อมูลเดียว ใช้สีเดียว ติดป้ายตัวเลขบนแท่งโดยตรง */
+.chart{margin:0;}
+.chart .bars{
+  display:flex;align-items:flex-end;gap:6px;height:130px;
+  padding-bottom:2px;border-bottom:2px solid #ece8fa;
+}
+.chart .bar{
+  flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;height:100%;
+}
+.chart .bar i{
+  display:block;width:100%;border-radius:4px 4px 0 0;background:var(--purple);min-height:3px;
+  transition:height .4s ease;
+}
+.chart .bar.is-empty i{background:#e8e4f7;}
+.chart .bar.is-today i{background:linear-gradient(180deg,var(--purple),var(--pink));}
+.chart .bar b{font-size:11.5px;font-weight:700;color:var(--muted);}
+.chart .bar-labels{display:flex;gap:6px;margin-top:7px;}
+.chart .bar-labels span{flex:1;text-align:center;font-size:11.5px;color:var(--muted);font-weight:600;}
+.chart .bar-labels span.is-today{color:var(--purple);font-weight:700;}
+
+.practice-list{display:flex;flex-wrap:wrap;gap:8px;}
+.practice-item{
+  display:flex;flex-direction:column;align-items:center;gap:2px;background:#fff;
+  border:2px solid #f0ecff;border-radius:14px;padding:8px 12px;min-width:56px;
+}
+.practice-item b{font-size:22px;font-family:var(--char-font);line-height:1.1;}
+.practice-item span{font-size:10.5px;color:var(--muted);font-weight:600;}
+.empty-note{color:var(--muted);font-size:13px;}
+
+/* ---------- สรุปผลชุดฝึก ---------- */
+.summary-overlay{background:linear-gradient(135deg,rgba(124,92,255,.93),rgba(46,196,182,.93));}
+.summary-card{
+  background:#fff;border-radius:34px;padding:32px 34px;text-align:center;max-width:520px;width:100%;
+  box-shadow:var(--shadow-lg);animation:pop .45s cubic-bezier(.2,1.4,.4,1);
+  max-height:92vh;overflow-y:auto;
+}
+.summary-emoji{font-size:56px;line-height:1;}
+.summary-card h2{margin:6px 0 10px;font-size:28px;}
+.summary-stars{font-size:26px;letter-spacing:3px;margin-bottom:16px;}
+.summary-grid{display:flex;gap:10px;margin-bottom:18px;}
+.summary-grid div{flex:1;background:#f8f6ff;border-radius:16px;padding:12px 6px;display:flex;flex-direction:column;}
+.summary-grid b{font-size:24px;color:var(--purple);}
+.summary-grid span{font-size:11.5px;color:var(--muted);font-weight:600;}
+.summary-chars{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:20px;}
+.summary-chars span{
+  font-family:var(--char-font);font-size:24px;font-weight:700;background:#fff4e0;
+  border-radius:12px;padding:4px 12px;
+}
+.summary-actions{display:flex;flex-direction:column;gap:10px;align-items:center;}
+.summary-actions .big-btn{font-size:20px;padding:15px 36px;}
+.summary-actions .ghost-btn{width:100%;}
+
 .scrim{position:fixed;inset:0;background:rgba(45,49,66,.35);opacity:0;pointer-events:none;transition:opacity .3s;z-index:40;}
 .scrim.show{opacity:1;pointer-events:auto;}
 
@@ -427,6 +494,7 @@ input[type=range]::-webkit-slider-thumb{
   .topbar{gap:8px;}
   .brand-icon{font-size:22px;}
   .score-chip{padding:5px 9px;font-size:12px;}
+  .set-bar{display:none;}
   .icon-btn{padding:8px 10px;font-size:16px;}
   .prompt-card{max-height:30%;}
   .prompt-inner{gap:8px;padding:10px;}
