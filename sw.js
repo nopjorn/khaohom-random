@@ -1,10 +1,11 @@
 /* Service worker เล็ก ๆ ให้เล่นต่อได้แม้เน็ตหลุด (ใช้ path แบบ relative จึงรองรับ GitHub Pages subpath) */
-const CACHE = 'khaohom-writing-v3';
+const CACHE = 'khaohom-writing-b4';
 const ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
   './assets/css/style.css',
+  './assets/js/version.js',
   './assets/js/data.js',
   './assets/js/audio.js',
   './assets/js/board.js',

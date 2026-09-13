@@ -172,6 +172,10 @@
     current = pickNext();
     if (!current) return;
 
+    // ซ่อนก่อนเปลี่ยนข้อความเสมอ ไม่งั้นตัวใหม่จะโผล่ให้เห็นระหว่างเฟดออก
+    const secs = S.listenOnly ? 0 : S.showSec;
+    if (secs <= 0) showChar(false, true);
+
     catBadge.textContent = (CATEGORIES.find((c) => c.id === current.cat) || {}).name || '';
     catBadge.style.background = `linear-gradient(135deg, ${current.color}, ${shade(current.color, -18)})`;
     charText.textContent = shownChar(current);
@@ -182,26 +186,36 @@
     board.setGuide(shownChar(current), effectiveGuide());
     boardHint.classList.toggle('hide', !board.isEmpty());
 
-    const secs = S.listenOnly ? 0 : S.showSec;
+    charText.classList.remove('pop-in');
     if (secs > 0) {
       showChar(true);
+      // เด้งตัวอักษรเฉพาะตอนที่แสดงจริงเท่านั้น
+      void charText.offsetWidth;
+      charText.classList.add('pop-in');
       runTimer(secs);
     } else {
-      showChar(false);
       timerWrap.classList.remove('show');
       timerLabel.textContent = '';
     }
 
     if (speak) sayCurrent();
-    charText.classList.remove('pop-in');
-    void charText.offsetWidth;
-    charText.classList.add('pop-in');
   }
 
-  function showChar(show) {
+  /* show = แสดงหรือซ่อนตัวอักษร, instant = ซ่อนทันทีโดยไม่ต้องเฟด */
+  function showChar(show, instant) {
+    if (!show) charText.classList.remove('pop-in');
+    if (instant) {
+      charText.classList.add('no-anim');
+      hintText.classList.add('no-anim');
+    }
     charText.classList.toggle('is-hidden', !show);
     hintText.classList.toggle('is-hidden', !show);
     hiddenFace.classList.toggle('show', !show);
+    if (instant) {
+      void charText.offsetWidth;
+      charText.classList.remove('no-anim');
+      hintText.classList.remove('no-anim');
+    }
   }
 
   function runTimer(secs) {
@@ -579,6 +593,36 @@
     $('showSecVal').textContent = S.showSec;
   }
 
+  /* ================= เลขเวอร์ชัน ================= */
+  function showVersion() {
+    const v = window.KH_VERSION || {};
+    const num = $('versionNum');
+    const meta = $('versionMeta');
+    if (!num) return;
+    if (v.build > 0) {
+      num.textContent = `เวอร์ชัน 1.0.${v.build}`;
+      meta.textContent = [v.commit, v.date].filter(Boolean).join(' · ');
+    } else {
+      num.textContent = 'เวอร์ชันสำหรับพัฒนา';
+      meta.textContent = 'dev';
+    }
+  }
+
+  /* แจ้งเตือนเมื่อมีไฟล์เวอร์ชันใหม่ถูกดาวน์โหลดไว้แล้ว */
+  function watchForUpdate(reg) {
+    const notify = (worker) => {
+      worker.addEventListener('statechange', () => {
+        if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+          toast('มีเวอร์ชันใหม่แล้วค่ะ ปิดแล้วเปิดแอปใหม่อีกครั้งนะคะ ✨');
+        }
+      });
+    };
+    if (reg.installing) notify(reg.installing);
+    reg.addEventListener('updatefound', () => {
+      if (reg.installing) notify(reg.installing);
+    });
+  }
+
   /* ================= เริ่มต้น ================= */
   function init() {
     buildChips();
@@ -607,6 +651,7 @@
     );
     setSeg('penSeg', 'pen', S.pen);
     setSeg('vowelSeg', 'vowel', S.vowelStyle);
+    showVersion();
     applyLevel();
     refreshPool();
     bindUI();
@@ -616,7 +661,9 @@
     board.drawGuide();
 
     if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
-      navigator.serviceWorker.register('sw.js').catch(() => { /* ไม่เป็นไร */ });
+      navigator.serviceWorker.register('sw.js')
+        .then(watchForUpdate)
+        .catch(() => { /* ไม่เป็นไร */ });
     }
   }
 

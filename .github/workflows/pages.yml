@@ -22,6 +22,12 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0        # ต้องมีประวัติทั้งหมดเพื่อนับจำนวนคอมมิตเป็นเลขเวอร์ชัน
+
+      - name: สร้างเลขเวอร์ชันอัตโนมัติ
+        run: bash tools/bump-version.sh
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
