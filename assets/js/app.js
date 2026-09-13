@@ -15,15 +15,29 @@
     rate: 0.85,
     listenOnly: false,
     autoNext: false,
-    lines: true,
     pressure: true,
     autoClear: true,
     pen: 'auto',
     vowelStyle: 'or',
     check: true,
     strict: 'easy',
+    customGreat: 73,      // % ที่ถือว่าถูกต้อง (ตัวเลขเดียวกับที่โชว์ในผลตรวจ)
+    customClose: 56,      // % ที่ถือว่าใกล้เคียง
+    font: 'mali',
+    fontScale: 52,        // % ของความสูงกระดาน
+    lineStyle: 'two',
+    mirror: false,
+    sfx: true,
+    repeatSec: 0,
+    voice: '',
     color: '#2d3142',
     size: 14,
+  };
+
+  const FONTS = {
+    mali: '"Mali", "Sarabun", "Noto Sans Thai", sans-serif',
+    itim: '"Itim", "Mali", "Noto Sans Thai", sans-serif',
+    sarabun: '"Sarabun", "Noto Sans Thai", sans-serif',
   };
   const LEVEL_PRESET = {
     1: { showSec: 6, guide: 'trace' },
@@ -54,6 +68,9 @@
       const raw = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
       const merged = { ...DEFAULTS, ...raw };
       if (!Array.isArray(merged.cats) || !merged.cats.length) merged.cats = [...DEFAULTS.cats];
+      // เวอร์ชันก่อนหน้าเก็บเส้นบรรทัดเป็น true/false
+      if (raw.lines === false && !raw.lineStyle) merged.lineStyle = 'none';
+      delete merged.lines;
       return merged;
     } catch (e) { return { ...DEFAULTS }; }
   }
@@ -171,6 +188,7 @@
 
   function newRound(speak = true) {
     stopTimers();
+    stopRepeat();
     peeking = false;
     current = pickNext();
     if (!current) return;
@@ -203,6 +221,7 @@
     }
 
     if (speak) sayCurrent();
+    scheduleRepeat();
   }
 
   /* show = แสดงหรือซ่อนตัวอักษร, instant = ซ่อนทันทีโดยไม่ต้องเฟด */
@@ -248,6 +267,21 @@
     timerFill.style.transform = 'scaleX(1)';
   }
 
+  let repeatId = null;
+  function stopRepeat() {
+    if (repeatId) { clearTimeout(repeatId); repeatId = null; }
+  }
+  function scheduleRepeat() {
+    stopRepeat();
+    if (!S.repeatSec || !current) return;
+    const tick = () => {
+      if (!current) return;
+      sayCurrent();
+      repeatId = setTimeout(tick, S.repeatSec * 1000);
+    };
+    repeatId = setTimeout(tick, S.repeatSec * 1000);
+  }
+
   function sayCurrent() {
     if (!current) return;
     AUDIO.unlock();
@@ -286,6 +320,12 @@
   const RETRY = ['ลองอีกครั้งนะ', 'ดูตัวอย่างแล้วลองใหม่นะคะ', 'ไม่เป็นไร ลองอีกทีค่ะ'];
   const pick = (a) => a[Math.floor(Math.random() * a.length)];
 
+  /* เกณฑ์ที่ใช้ตรวจ: ชื่อระดับ หรือค่าที่ผู้ใช้ตั้งเอง (แปลง % กลับเป็นคะแนน) */
+  function checkLevel() {
+    if (S.strict !== 'custom') return S.strict;
+    return { great: S.customGreat / 125, close: S.customClose / 125 };
+  }
+
   function hideResult() {
     $('resultBox').className = 'result';
     board.clearAnswer();
@@ -306,6 +346,7 @@
       return;
     }
     stopTimers();
+    stopRepeat();
     timerWrap.classList.remove('show');
 
     if (!S.check || !current || !CHECKER) {
@@ -314,7 +355,7 @@
     }
 
     const target = board.targetCanvas(shownChar(current));
-    const r = CHECKER.check(board.ink, target, S.strict);
+    const r = CHECKER.check(board.ink, target, checkLevel());
 
     if (r.verdict === 'too-small') {
       toast('เขียนตัวใหญ่ขึ้นอีกนิดนะคะ จะได้ตรวจให้ได้ 🔍');
@@ -533,6 +574,69 @@
       });
     });
 
+    // ---- ตัวอักษรและกระดาน ----
+    document.querySelectorAll('#fontSeg button').forEach((b) => {
+      b.addEventListener('click', () => {
+        S.font = b.dataset.font;
+        setSeg('fontSeg', 'font', S.font);
+        applyFont();
+        AUDIO.sfx.pop();
+        save();
+      });
+    });
+    document.querySelectorAll('#lineSeg button').forEach((b) => {
+      b.addEventListener('click', () => {
+        S.lineStyle = b.dataset.line;
+        setSeg('lineSeg', 'line', S.lineStyle);
+        board.lineStyle = S.lineStyle;
+        board.drawGuide();
+        AUDIO.sfx.pop();
+        save();
+      });
+    });
+    $('fontScale').addEventListener('input', (e) => {
+      S.fontScale = +e.target.value;
+      $('fontScaleVal').textContent = S.fontScale;
+      board.fontScale = S.fontScale / 100;
+      board.drawGuide();
+      save();
+    });
+    $('optMirror').addEventListener('change', (e) => {
+      S.mirror = e.target.checked;
+      applyMirror();
+      save();
+    });
+
+    // ---- เสียง ----
+    $('optSfx').addEventListener('change', (e) => {
+      S.sfx = e.target.checked;
+      AUDIO.setSfx(S.sfx);
+      if (S.sfx) AUDIO.sfx.ding();
+      save();
+    });
+    $('repeatSec').addEventListener('input', (e) => {
+      S.repeatSec = +e.target.value;
+      applyRepeatLabel();
+      scheduleRepeat();
+      save();
+    });
+    $('voiceSel').addEventListener('change', (e) => {
+      S.voice = e.target.value;
+      AUDIO.setVoice(S.voice);
+      sayCurrent();
+      save();
+    });
+
+    // ---- คืนค่าเริ่มต้น ----
+    $('resetAll').addEventListener('click', () => {
+      S = { ...DEFAULTS, cats: [...DEFAULTS.cats] };
+      save();
+      applyAll();
+      refreshPool();
+      newRound(false);
+      toast('คืนค่าเริ่มต้นให้แล้วค่ะ ✨');
+    });
+
     // ตรวจลายมือ
     $('optCheck').addEventListener('change', (e) => {
       S.check = e.target.checked;
@@ -544,9 +648,22 @@
       b.addEventListener('click', () => {
         S.strict = b.dataset.strict;
         setSeg('strictSeg', 'strict', S.strict);
+        applyStrict();
         AUDIO.sfx.pop();
         save();
       });
+    });
+    $('rangeGreat').addEventListener('input', (e) => {
+      S.customGreat = +e.target.value;
+      if (S.customClose > S.customGreat) S.customClose = S.customGreat;
+      applyStrict();
+      save();
+    });
+    $('rangeClose').addEventListener('input', (e) => {
+      S.customClose = +e.target.value;
+      if (S.customClose > S.customGreat) S.customGreat = S.customClose;
+      applyStrict();
+      save();
     });
 
     // รูปแบบสระ / วรรณยุกต์
@@ -590,9 +707,6 @@
 
     // สวิตช์ต่าง ๆ
     $('optAutoNext').addEventListener('change', (e) => { S.autoNext = e.target.checked; save(); });
-    $('optLines').addEventListener('change', (e) => {
-      S.lines = e.target.checked; board.showLines = S.lines; board.drawGuide(); save();
-    });
     $('optPressure').addEventListener('change', (e) => { S.pressure = e.target.checked; board.usePressure = S.pressure; save(); });
     $('optAutoClear').addEventListener('change', (e) => { S.autoClear = e.target.checked; save(); });
 
@@ -692,6 +806,100 @@
     $('showSecVal').textContent = S.showSec;
   }
 
+  function applyStrict() {
+    setSeg('strictSeg', 'strict', S.strict);
+    $('customBox').hidden = S.strict !== 'custom';
+    $('rangeGreat').value = S.customGreat;
+    $('rangeClose').value = S.customClose;
+    $('greatVal').textContent = S.customGreat;
+    $('closeVal').textContent = S.customClose;
+  }
+
+  function applyFont() {
+    const family = FONTS[S.font] || FONTS.mali;
+    board.guideFont = family;
+    document.documentElement.style.setProperty('--char-font', family);
+    setSeg('fontSeg', 'font', S.font);
+    board.drawGuide();
+  }
+
+  function applyRepeatLabel() {
+    $('repeatLabel').textContent = S.repeatSec ? 'อ่านซ้ำอัตโนมัติทุก' : 'อ่านซ้ำอัตโนมัติ:';
+    $('repeatVal').textContent = S.repeatSec ? `${S.repeatSec} วินาที` : 'ปิด';
+  }
+
+  function applyMirror() {
+    document.querySelector('.stage').classList.toggle('mirror', !!S.mirror);
+    $('optMirror').checked = !!S.mirror;
+  }
+
+  /* รายชื่อเสียงอ่านภาษาไทยในเครื่อง (บาง iPad โหลดช้า จึงเรียกซ้ำได้) */
+  function fillVoices() {
+    const sel = $('voiceSel');
+    if (!sel || !AUDIO.listVoices) return;
+    const list = AUDIO.listVoices('th');
+    const current = S.voice;
+    sel.innerHTML = '<option value="">อัตโนมัติ</option>';
+    list.forEach((v) => {
+      const o = document.createElement('option');
+      o.value = v.name;
+      o.textContent = v.name;
+      sel.appendChild(o);
+    });
+    sel.value = list.some((v) => v.name === current) ? current : '';
+    sel.parentElement.style.display = list.length ? '' : 'none';
+  }
+
+  /* ใส่ค่าที่ตั้งไว้ลงทุกส่วนของแอป */
+  function applyAll() {
+    board.color = S.color;
+    board.size = S.size;
+    board.penOnly = S.pen;
+    board.usePressure = S.pressure;
+    board.lineStyle = S.lineStyle;
+    board.fontScale = S.fontScale / 100;
+
+    $('optListen').checked = S.listenOnly;
+    $('optAutoNext').checked = S.autoNext;
+    $('optPressure').checked = S.pressure;
+    $('optAutoClear').checked = S.autoClear;
+    $('optCheck').checked = S.check;
+    $('optSfx').checked = S.sfx;
+    $('rateRange').value = S.rate;
+    $('rateVal').textContent = (+S.rate).toFixed(2);
+    $('fontScale').value = S.fontScale;
+    $('fontScaleVal').textContent = S.fontScale;
+    $('repeatSec').value = S.repeatSec;
+    applyRepeatLabel();
+    $('listenOnlyBtn').classList.toggle('is-on', S.listenOnly);
+
+    AUDIO.setRate(S.rate);
+    AUDIO.setSfx(S.sfx);
+    AUDIO.setVoice(S.voice);
+
+    document.querySelectorAll('.size-btn').forEach((b) =>
+      b.classList.toggle('is-active', +b.dataset.size === S.size)
+    );
+    document.querySelectorAll('#colorRow .color-btn').forEach((b, i) =>
+      b.classList.toggle('is-active', PALETTE[i] === S.color)
+    );
+    document.querySelectorAll('#catChips .chip').forEach((b, i) => {
+      const on = S.cats.includes(CATEGORIES[i].id);
+      b.classList.toggle('is-active', on);
+      b.style.background = on ? CATEGORIES[i].color : '';
+    });
+
+    setSeg('penSeg', 'pen', S.pen);
+    setSeg('vowelSeg', 'vowel', S.vowelStyle);
+    setSeg('lineSeg', 'line', S.lineStyle);
+    applyStrict();
+    applyCheckMode();
+    applyFont();
+    applyMirror();
+    applyLevel();
+    updateScore();
+  }
+
   /* ================= เลขเวอร์ชัน ================= */
   function showVersion() {
     const v = window.KH_VERSION || {};
@@ -726,37 +934,16 @@
   function init() {
     buildChips();
     buildColors();
-
-    board.color = S.color;
-    board.size = S.size;
-    board.penOnly = S.pen;
-    board.usePressure = S.pressure;
-    board.showLines = S.lines;
-
-    $('optListen').checked = S.listenOnly;
-    $('optAutoNext').checked = S.autoNext;
-    $('optLines').checked = S.lines;
-    $('optPressure').checked = S.pressure;
-    $('optAutoClear').checked = S.autoClear;
-    $('rateRange').value = S.rate;
-    $('rateVal').textContent = (+S.rate).toFixed(2);
-    AUDIO.setRate(S.rate);
-    $('listenOnlyBtn').classList.toggle('is-on', S.listenOnly);
-    $('scoreVal').textContent = score;
-    $('streakVal').textContent = streak;
-
-    document.querySelectorAll('.size-btn').forEach((b) =>
-      b.classList.toggle('is-active', +b.dataset.size === S.size)
-    );
-    setSeg('penSeg', 'pen', S.pen);
-    setSeg('vowelSeg', 'vowel', S.vowelStyle);
-    setSeg('strictSeg', 'strict', S.strict);
-    $('optCheck').checked = S.check;
-    applyCheckMode();
+    applyAll();
+    fillVoices();
     showVersion();
-    applyLevel();
     refreshPool();
     bindUI();
+
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.addEventListener('voiceschanged', fillVoices);
+      setTimeout(fillVoices, 1200);
+    }
 
     // เตรียมรอบแรกไว้เบื้องหลัง (ยังไม่ออกเสียงจนกว่าจะกดเริ่ม)
     newRound(false);

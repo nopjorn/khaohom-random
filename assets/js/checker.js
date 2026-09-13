@@ -21,12 +21,22 @@
   const ALPHA = 40;    // ความทึบขั้นต่ำที่นับว่าเป็นเส้น
   const NEAR = 2;      // ระยะที่ถือว่า "เส้นทับกัน" ตอนดูความครบถ้วน
 
-  /* เกณฑ์ตัดสิน: [ถูกต้องเลย, ใกล้เคียง] */
+  /* เกณฑ์ตัดสินสำเร็จรูป: [ถูกต้องเลย, ใกล้เคียง] */
   const LEVELS = {
     easy:   [0.58, 0.45],
     normal: [0.65, 0.52],
     strict: [0.72, 0.60],
   };
+
+  /* รับได้ทั้งชื่อระดับ ('easy') และเกณฑ์ที่ตั้งเอง ({ great: 0.6, close: 0.5 }) */
+  function resolveLevel(level) {
+    if (level && typeof level === 'object') {
+      const great = Math.min(0.98, Math.max(0.05, +level.great || LEVELS.easy[0]));
+      const close = Math.min(great, Math.max(0.02, +level.close || LEVELS.easy[1]));
+      return [great, close];
+    }
+    return LEVELS[level] || LEVELS.easy;
+  }
 
   /* ---- แผนที่ความหนาแน่นของหมึก (คงสัดส่วน จัดกึ่งกลาง) ---- */
   function density(canvas) {
@@ -148,7 +158,7 @@
     const siou = mx ? mn / mx : 0;      // ทับกันแค่ไหนเมื่อเทียบกับพื้นที่รวม
     const score = (hist + siou) / 2;
 
-    const [passGreat, passClose] = LEVELS[level] || LEVELS.easy;
+    const [passGreat, passClose] = resolveLevel(level);
     const verdict = score >= passGreat ? 'great' : score >= passClose ? 'close' : 'retry';
 
     return {
@@ -161,5 +171,5 @@
     };
   }
 
-  window.KH_Checker = { check, LEVELS };
+  window.KH_Checker = { check, LEVELS, resolveLevel };
 })();
