@@ -111,6 +111,24 @@ const CATEGORIES = [
   { id: 'engwords',   name: 'คำอังกฤษ',      emoji: '🐱', items: engWords,   color: '#fdcb6e' },
 ];
 
+/* ------------------------------------------------------------------
+ * รูปแบบการแสดงสระ/วรรณยุกต์
+ *   'or'   : ใช้ตัว อ เป็นตัวเกาะ  →  อา, ไอ, เอา, อ่
+ *   'dash' : ใช้ขีดแทนตัวเกาะ      →  -า, ไ-, เ-า, -่
+ * ------------------------------------------------------------------ */
+const DASH_CATS = new Set(['vowels', 'tones']);
+
+function toDashForm(ch) {
+  // แทนที่ตัว อ ตัวแรก (ตัวเกาะ) ด้วยขีด เช่น เอา -> เ-า, ออ -> -อ
+  return ch.indexOf('อ') >= 0 ? ch.replace('อ', '-') : ch;
+}
+
+/* ตัวอักษรที่จะแสดงบนจอ ตามรูปแบบที่ผู้ใช้เลือก */
+function displayForm(item, style) {
+  if (!item) return '';
+  return style === 'dash' && DASH_CATS.has(item.cat) ? toDashForm(item.ch) : item.ch;
+}
+
 /* สุ่มรายการจากหมวดที่เลือก ตามระดับความยาก (เอาทุก lv <= level) */
 function buildPool(activeIds, level) {
   const pool = [];
@@ -123,4 +141,4 @@ function buildPool(activeIds, level) {
   return pool;
 }
 
-window.KH_DATA = { CATEGORIES, buildPool };
+window.KH_DATA = { CATEGORIES, buildPool, displayForm, toDashForm, DASH_CATS };
