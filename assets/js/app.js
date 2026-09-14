@@ -1172,14 +1172,13 @@
     const v = window.KH_VERSION || {};
     const num = $('versionNum');
     const meta = $('versionMeta');
-    if (!num) return;
-    if (v.build > 0) {
-      num.textContent = `เวอร์ชัน 1.0.${v.build}`;
-      meta.textContent = [v.commit, v.date].filter(Boolean).join(' · ');
-    } else {
-      num.textContent = 'เวอร์ชันสำหรับพัฒนา';
-      meta.textContent = 'dev';
+    const tag = $('versionTag');
+    const label = v.build > 0 ? `เวอร์ชัน 1.0.${v.build}` : 'เวอร์ชันสำหรับพัฒนา';
+    if (num) {
+      num.textContent = label;
+      meta.textContent = v.build > 0 ? [v.commit, v.date].filter(Boolean).join(' · ') : 'dev';
     }
+    if (tag) tag.textContent = label;
   }
 
   /* แจ้งเตือนเมื่อมีไฟล์เวอร์ชันใหม่ถูกดาวน์โหลดไว้แล้ว */
