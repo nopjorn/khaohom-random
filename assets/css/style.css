@@ -90,6 +90,7 @@ body::after{width:160px;height:160px;right:-50px;top:35%;background:radial-gradi
 .brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:20px;}
 .brand-icon{font-size:26px;animation:wiggle 3s ease-in-out infinite;display:inline-block;}
 .brand-text{background:linear-gradient(90deg,var(--purple),var(--pink));-webkit-background-clip:text;background-clip:text;color:transparent;white-space:nowrap;}
+.test-mode-badge{font-size:12px;font-weight:700;background:#fff3cd;color:#8a6300;border:1px solid #f0c93b;border-radius:999px;padding:3px 10px;white-space:nowrap;}
 
 .score-wrap{display:flex;gap:8px;margin-left:auto;}
 .score-chip{

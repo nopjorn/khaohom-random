@@ -30,6 +30,7 @@
 
       this.guideText = '';
       this.guideMode = 'trace';   // 'trace' | 'faint' | 'none'
+      this.areaHint = false;      // true = ไม่โชว์ตัวอักษร แต่ยังโชว์กรอบพื้นที่ให้เขียนตรงกลาง
       this.startDot = null;          // จุดบอก "เริ่มเขียนตรงนี้" (หัวตัวอักษร)
       this.lineStyle = 'two';        // none | two | four | grid
       this.fontScale = 0.52;         // ขนาดตัวอักษรเทียบกับความสูงกระดาน
@@ -72,6 +73,8 @@
 
     setGuideMode(mode) { this.guideMode = mode; this.drawGuide(); }
 
+    setAreaHint(on) { this.areaHint = !!on; this.drawGuide(); }
+
     drawGuide() {
       const ctx = this.gctx;
       if (!this.w) return;
@@ -80,7 +83,10 @@
       const midY = this.h / 2;
       this._drawLines(midY);
 
-      if (!this.guideText || this.guideMode === 'none') return;
+      if (!this.guideText || this.guideMode === 'none') {
+        if (this.guideText && this.areaHint) this._drawAreaHint(midY);
+        return;
+      }
 
       ctx.save();
       const fontSize = this._fitText(ctx, this.guideText);
@@ -100,6 +106,31 @@
       }
       ctx.restore();
       this._drawStartDot();
+    }
+
+    /* โหมดฟังอย่างเดียว: ไม่โชว์ตัวอักษร แต่โชว์กรอบเบา ๆ บอกว่าควรเขียนแถวไหน/ขนาดไหน */
+    _drawAreaHint(midY) {
+      const ctx = this.gctx;
+      ctx.save();
+      const fontSize = this._fitText(ctx, this.guideText);
+      const width = ctx.measureText(this.guideText).width;
+      const boxW = Math.min(this.w * 0.9, width + fontSize * 0.5);
+      const boxH = fontSize * 1.15;
+      ctx.strokeStyle = this._alpha(this.accent, 0.3);
+      ctx.setLineDash([8, 8]);
+      ctx.lineWidth = 2;
+      const r = 14;
+      const x = this.w / 2 - boxW / 2;
+      const y = midY - boxH / 2;
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + boxW, y, x + boxW, y + boxH, r);
+      ctx.arcTo(x + boxW, y + boxH, x, y + boxH, r);
+      ctx.arcTo(x, y + boxH, x, y, r);
+      ctx.arcTo(x, y, x + boxW, y, r);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.restore();
     }
 
     /* จุดเขียว ๆ บอกว่าให้เริ่มลากเส้นตรงหัวตัวอักษร */
