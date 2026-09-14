@@ -87,6 +87,12 @@ const wordRaw = [
 ];
 const words = wordRaw.map(([w, lv]) => T(w, w, lv, w));
 
+/* ---------- คำง่าย ไม่มีวรรณยุกต์ (เหมาะกับเด็กเริ่มหัดเขียน) ---------- */
+const TONE_MARKS = /[่-๋]/;
+const wordsNoTone = wordRaw
+  .filter(([w]) => !TONE_MARKS.test(w))
+  .map(([w, lv]) => T(w, w, lv, w));
+
 /* ---------- ภาษาอังกฤษ ---------- */
 const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 const EASY_UPPER = new Set(['A', 'B', 'C', 'D', 'E', 'F', 'H', 'I', 'L', 'O', 'P', 'T', 'U', 'V', 'X']);
@@ -100,15 +106,23 @@ const engWords = ['cat', 'dog', 'sun', 'bus', 'cup', 'egg', 'hat', 'pen', 'box',
   .map((w) => E(w, w, 3, w));
 
 /* ---------- หมวดทั้งหมด ---------- */
+/* group ใช้จัดกลุ่มตัวเลือกในหน้าตั้งค่าให้ดูง่ายขึ้น ไม่เกี่ยวกับการสุ่ม */
+const GROUPS = [
+  { id: 'number', name: 'ตัวเลข' },
+  { id: 'thai', name: 'ภาษาไทย' },
+  { id: 'english', name: 'ภาษาอังกฤษ' },
+];
+
 const CATEGORIES = [
-  { id: 'numbers',    name: 'ตัวเลข',        emoji: '🔢', items: numbers,    color: '#ff9f43' },
-  { id: 'consonants', name: 'พยัญชนะไทย',   emoji: '🐔', items: consonants, color: '#ee5a6f' },
-  { id: 'vowels',     name: 'สระไทย',        emoji: '🌈', items: vowels,     color: '#6c5ce7' },
-  { id: 'tones',      name: 'วรรณยุกต์',     emoji: '🎵', items: tones,      color: '#00b894' },
-  { id: 'words',      name: 'คำง่าย',        emoji: '📖', items: words,      color: '#0984e3' },
-  { id: 'upper',      name: 'A-Z ตัวใหญ่',   emoji: '🅰️', items: upper,      color: '#e84393' },
-  { id: 'lower',      name: 'a-z ตัวเล็ก',   emoji: '🔡', items: lower,      color: '#00cec9' },
-  { id: 'engwords',   name: 'คำอังกฤษ',      emoji: '🐱', items: engWords,   color: '#fdcb6e' },
+  { id: 'numbers',      name: 'ตัวเลข',                emoji: '🔢', items: numbers,      color: '#ff9f43', group: 'number' },
+  { id: 'consonants',   name: 'พยัญชนะไทย',           emoji: '🐔', items: consonants,   color: '#ee5a6f', group: 'thai' },
+  { id: 'vowels',       name: 'สระไทย',                emoji: '🌈', items: vowels,       color: '#6c5ce7', group: 'thai' },
+  { id: 'tones',        name: 'วรรณยุกต์',             emoji: '🎵', items: tones,        color: '#00b894', group: 'thai' },
+  { id: 'words',        name: 'คำง่าย',                emoji: '📖', items: words,        color: '#0984e3', group: 'thai' },
+  { id: 'wordsNoTone',  name: 'คำง่าย (ไม่มีวรรณยุกต์)', emoji: '📗', items: wordsNoTone, color: '#20bf6b', group: 'thai' },
+  { id: 'upper',        name: 'A-Z ตัวใหญ่',           emoji: '🅰️', items: upper,        color: '#e84393', group: 'english' },
+  { id: 'lower',        name: 'a-z ตัวเล็ก',           emoji: '🔡', items: lower,        color: '#00cec9', group: 'english' },
+  { id: 'engwords',     name: 'คำอังกฤษ',              emoji: '🐱', items: engWords,     color: '#fdcb6e', group: 'english' },
 ];
 
 /* ------------------------------------------------------------------
@@ -141,4 +155,4 @@ function buildPool(activeIds, level) {
   return pool;
 }
 
-window.KH_DATA = { CATEGORIES, buildPool, displayForm, toDashForm, DASH_CATS };
+window.KH_DATA = { CATEGORIES, GROUPS, buildPool, displayForm, toDashForm, DASH_CATS };

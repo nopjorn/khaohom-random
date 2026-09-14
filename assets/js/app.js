@@ -2,7 +2,7 @@
  * app.js — ตัวควบคุมหลักของแอปฝึกเขียนตาม
  * ------------------------------------------------------------------ */
 (function () {
-  const { CATEGORIES, buildPool, displayForm } = window.KH_DATA;
+  const { CATEGORIES, GROUPS, buildPool, displayForm } = window.KH_DATA;
   const AUDIO = window.KH_AUDIO;
   const $ = (id) => document.getElementById(id);
 
@@ -113,29 +113,48 @@
   function buildChips() {
     const box = $('catChips');
     box.innerHTML = '';
-    CATEGORIES.forEach((cat) => {
-      const b = document.createElement('button');
-      b.className = 'chip' + (S.cats.includes(cat.id) ? ' is-active' : '');
-      b.textContent = `${cat.emoji} ${cat.name}`;
-      if (S.cats.includes(cat.id)) b.style.background = cat.color;
-      b.addEventListener('click', () => {
-        const i = S.cats.indexOf(cat.id);
-        if (i >= 0) {
-          if (S.cats.length === 1) { toast('ต้องเลือกอย่างน้อย 1 หมวดนะคะ'); return; }
-          S.cats.splice(i, 1);
-          b.classList.remove('is-active');
-          b.style.background = '';
-        } else {
-          S.cats.push(cat.id);
-          b.classList.add('is-active');
-          b.style.background = cat.color;
-        }
-        AUDIO.sfx.pop();
-        focusPool = [];
-        refreshPool();
-        save();
+    GROUPS.forEach((group) => {
+      const cats = CATEGORIES.filter((c) => c.group === group.id);
+      if (!cats.length) return;
+
+      const wrap = document.createElement('div');
+      wrap.className = 'chip-group';
+
+      const label = document.createElement('div');
+      label.className = 'chip-group-label';
+      label.textContent = group.name;
+      wrap.appendChild(label);
+
+      const row = document.createElement('div');
+      row.className = 'chips';
+
+      cats.forEach((cat) => {
+        const b = document.createElement('button');
+        b.className = 'chip' + (S.cats.includes(cat.id) ? ' is-active' : '');
+        b.textContent = `${cat.emoji} ${cat.name}`;
+        if (S.cats.includes(cat.id)) b.style.background = cat.color;
+        b.addEventListener('click', () => {
+          const i = S.cats.indexOf(cat.id);
+          if (i >= 0) {
+            if (S.cats.length === 1) { toast('ต้องเลือกอย่างน้อย 1 หมวดนะคะ'); return; }
+            S.cats.splice(i, 1);
+            b.classList.remove('is-active');
+            b.style.background = '';
+          } else {
+            S.cats.push(cat.id);
+            b.classList.add('is-active');
+            b.style.background = cat.color;
+          }
+          AUDIO.sfx.pop();
+          focusPool = [];
+          refreshPool();
+          save();
+        });
+        row.appendChild(b);
       });
-      box.appendChild(b);
+
+      wrap.appendChild(row);
+      box.appendChild(wrap);
     });
   }
 
