@@ -150,7 +150,7 @@ body::after{width:160px;height:160px;right:-50px;top:35%;background:radial-gradi
   background:linear-gradient(160deg,var(--purple),var(--pink) 60%,var(--orange));
   -webkit-background-clip:text;background-clip:text;color:transparent;
   transition:opacity .3s ease,transform .3s ease;
-  padding:0 6px;text-align:center;word-break:break-word;
+  padding:0 6px;text-align:center;white-space:nowrap;
   max-width:100%;
 }
 .char.is-hidden{
