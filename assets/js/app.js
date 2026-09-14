@@ -27,6 +27,7 @@
     customGreat: 73,      // % ที่ถือว่าถูกต้อง (ตัวเลขเดียวกับที่โชว์ในผลตรวจ)
     customClose: 56,      // % ที่ถือว่าใกล้เคียง
     font: 'mali',
+    align: 'left',
     fontScale: 52,        // % ของความสูงกระดาน
     lineStyle: 'two',
     mirror: false,
@@ -755,10 +756,23 @@
         save();
       });
     });
+    document.querySelectorAll('#alignSeg button').forEach((b) => {
+      b.addEventListener('click', () => {
+        S.align = b.dataset.align;
+        setSeg('alignSeg', 'align', S.align);
+        board.align = S.align;
+        headCache.clear();
+        applyStartDot();
+        board.drawGuide();
+        AUDIO.sfx.pop();
+        save();
+      });
+    });
     document.querySelectorAll('#lineSeg button').forEach((b) => {
       b.addEventListener('click', () => {
         S.lineStyle = b.dataset.line;
         setSeg('lineSeg', 'line', S.lineStyle);
+    setSeg('alignSeg', 'align', S.align);
         board.lineStyle = S.lineStyle;
         board.drawGuide();
         AUDIO.sfx.pop();
@@ -1115,6 +1129,7 @@
     board.penOnly = S.pen;
     board.usePressure = S.pressure;
     board.lineStyle = S.lineStyle;
+    board.align = S.align;
     board.fontScale = S.fontScale / 100;
 
     $('optListen').checked = S.listenOnly;
@@ -1156,6 +1171,7 @@
     setSeg('setLenSeg', 'len', S.setLen);
     setSeg('vowelSeg', 'vowel', S.vowelStyle);
     setSeg('lineSeg', 'line', S.lineStyle);
+    setSeg('alignSeg', 'align', S.align);
     applyStrict();
     applyCheckMode();
     applyFont();

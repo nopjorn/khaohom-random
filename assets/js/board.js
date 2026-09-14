@@ -31,6 +31,7 @@
       this.guideText = '';
       this.guideMode = 'trace';   // 'trace' | 'faint' | 'none'
       this.areaHint = false;      // true = ไม่โชว์ตัวอักษร แต่ยังโชว์กรอบพื้นที่ให้เขียนตรงกลาง
+      this.align = 'left';           // ตำแหน่งตัวอย่าง: left | center
       this.startDot = null;          // จุดบอก "เริ่มเขียนตรงนี้" (หัวตัวอักษร)
       this.lineStyle = 'two';        // none | two | four | grid
       this.fontScale = 0.52;         // ขนาดตัวอักษรเทียบกับความสูงกระดาน
@@ -158,15 +159,15 @@
       if (this.guideMode === 'trace') {
         // ตัวโปร่ง: ไส้จาง ๆ + เส้นขอบชัด ให้ลากทับได้ง่าย
         ctx.fillStyle = this._alpha(this.accent, 0.12);
-        ctx.fillText(this.guideText, this.w / 2, midY);
+        ctx.fillText(this.guideText, this._textX(), midY);
         ctx.lineJoin = 'round';
         ctx.lineWidth = Math.max(2, fontSize * 0.016);
         ctx.setLineDash([]);
         ctx.strokeStyle = this._alpha(this.accent, 0.5);
-        ctx.strokeText(this.guideText, this.w / 2, midY);
+        ctx.strokeText(this.guideText, this._textX(), midY);
       } else if (this.guideMode === 'faint') {
         ctx.fillStyle = this._alpha(this.accent, 0.14);
-        ctx.fillText(this.guideText, this.w / 2, midY);
+        ctx.fillText(this.guideText, this._textX(), midY);
       }
       ctx.restore();
       this._drawStartDot();
@@ -264,17 +265,27 @@
       line(midY, soft, [10, 12], 1.5);
     }
 
+    /* ระยะขอบซ้าย ให้ตรงกับจุดเริ่มของเส้นบรรทัดพอดี */
+    _padX() {
+      return Math.max(24, this.w * 0.05);
+    }
+
+    /* จุดวางตัวอักษรแนวนอน ชิดซ้ายจะไม่มีปัญหาเรื่องการจัดกึ่งกลาง */
+    _textX() {
+      return this.align === 'center' ? this.w / 2 : this._padX();
+    }
+
     /* ตั้งฟอนต์ให้ตัวอักษรพอดีกับกระดาน แล้วคืนขนาดที่ใช้ */
     _fitText(ctx, text) {
       let fontSize = this.h * this.fontScale;
-      ctx.textAlign = 'center';
+      ctx.textAlign = this.align === 'center' ? 'center' : 'left';
       ctx.textBaseline = 'middle';
       const fit = () => {
         ctx.font = `700 ${fontSize}px ${this.guideFont}`;
         return ctx.measureText(text).width;
       };
       const width = fit();
-      const maxW = this.w * 0.82;
+      const maxW = this.align === 'center' ? this.w * 0.82 : this.w - this._padX() * 2;
       if (width > maxW) { fontSize *= maxW / width; fit(); }
       return fontSize;
     }
@@ -287,7 +298,7 @@
       const ctx = c.getContext('2d');
       this._fitText(ctx, text);
       ctx.fillStyle = '#000';
-      ctx.fillText(text, c.width / 2, c.height / 2);
+      ctx.fillText(text, this._textX(), c.height / 2);
       return c;
     }
 
@@ -302,7 +313,7 @@
       ctx.lineWidth = Math.max(2.5, fontSize * 0.02);
       ctx.strokeStyle = color;
       ctx.setLineDash([]);
-      ctx.strokeText(text, this.w / 2, this.h / 2);
+      ctx.strokeText(text, this._textX(), this.h / 2);
       ctx.restore();
     }
 
