@@ -35,6 +35,7 @@
     voice: '',
     color: '#2d3142',
     size: 14,
+    testMode: false,
   };
 
   const FONTS = {
@@ -421,7 +422,7 @@
 
   function recordResult(verdict) {
     const ch = current ? current.ch : '';
-    if (STATS) STATS.record(ch, verdict);
+    if (STATS && !S.testMode) STATS.record(ch, verdict);
     if (!S.session) return;
     setResults.push({ ch, verdict, hint: current ? current.hint : '' });
     setCount++;
@@ -514,15 +515,12 @@
       else if (r.neat < r.complete - 0.12) hint = `${pct} · มีเส้นเกินออกมา`;
       showResult('close', 2, pick(CLOSE), tips[0] ? `${hint} · ${tips[0]}` : hint);
       showChar(true);
-      score++;
-      streak++;
-      updateScore();
+      if (!S.testMode) { score++; streak++; updateScore(); }
       AUDIO.sfx.ding();
     } else {
       showResult('retry', 1, pick(RETRY), tips[0] ? `${pct} · ${tips[0]}` : `${pct} · ดูเส้นเฉลยบนกระดานนะคะ`);
       showChar(true);
-      streak = 0;
-      updateScore();
+      if (!S.testMode) { streak = 0; updateScore(); }
       AUDIO.sfx.pop();
     }
 
@@ -535,9 +533,7 @@
 
   /* ให้รางวัลเมื่อเขียนถูก */
   function reward(text) {
-    score++;
-    streak++;
-    updateScore();
+    if (!S.testMode) { score++; streak++; updateScore(); }
     praise(text);
     confettiBurst();
     AUDIO.sfx.cheer();
@@ -929,6 +925,12 @@
     $('optAutoNext').addEventListener('change', (e) => { S.autoNext = e.target.checked; save(); });
     $('optPressure').addEventListener('change', (e) => { S.pressure = e.target.checked; board.usePressure = S.pressure; save(); });
     $('optAutoClear').addEventListener('change', (e) => { S.autoClear = e.target.checked; save(); });
+    $('optTestMode').addEventListener('change', (e) => {
+      S.testMode = e.target.checked;
+      save();
+      $('testModeBadge').hidden = !S.testMode;
+      toast(S.testMode ? 'โหมดทดสอบ: ไม่นับสถิติแล้วนะคะ 🧪' : 'ปิดโหมดทดสอบแล้วค่ะ กลับมานับสถิติตามปกติ');
+    });
 
     $('resetScore').addEventListener('click', () => {
       score = 0; streak = 0;
@@ -1001,6 +1003,7 @@
 
   function applyListenOnly() {
     $('listenOnlyBtn').classList.toggle('is-on', S.listenOnly);
+    board.setAreaHint(S.listenOnly);
     if (current) {
       board.setGuide(shownChar(current), effectiveGuide());
       if (S.listenOnly) {
@@ -1088,6 +1091,8 @@
     $('optSfx').checked = S.sfx;
     $('optSession').checked = S.session;
     $('optStroke').checked = S.stroke;
+    $('optTestMode').checked = S.testMode;
+    $('testModeBadge').hidden = !S.testMode;
     $('rateRange').value = S.rate;
     $('rateVal').textContent = (+S.rate).toFixed(2);
     $('fontScale').value = S.fontScale;
@@ -1095,6 +1100,7 @@
     $('repeatSec').value = S.repeatSec;
     applyRepeatLabel();
     $('listenOnlyBtn').classList.toggle('is-on', S.listenOnly);
+    board.setAreaHint(S.listenOnly);
 
     AUDIO.setRate(S.rate);
     AUDIO.setSfx(S.sfx);
