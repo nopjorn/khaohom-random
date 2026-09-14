@@ -42,26 +42,89 @@
 
       this._bind();
       this.resize();
-      const ro = new ResizeObserver(() => this.resize());
+
+      let pending = false;
+      const ro = new ResizeObserver(() => {
+        if (pending) return;
+        pending = true;
+        requestAnimationFrame(() => { pending = false; this.resize(); });
+      });
       ro.observe(this.wrap);
+
+      // iPad อาจล้างภาพในผืนผ้าใบทิ้งตอนสลับแอป จึงวาดใหม่เมื่อกลับมา
+      const repaint = () => { this.dpr = 0; this._ensureSize() || this.resize(); };
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) repaint(); });
+      window.addEventListener('pageshow', repaint);
+      window.addEventListener('orientationchange', () => setTimeout(repaint, 250));
+
+      // ตอนเปิดครั้งแรกฟอนต์ยังโหลดไม่เสร็จ ขนาดตัวอักษรที่วัดได้จะเป็นของฟอนต์สำรอง
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(() => this.drawGuide());
+      }
     }
 
     /* ---------- ขนาด / ความคมชัด ---------- */
+    /* ใช้ clientWidth/clientHeight ซึ่งเป็นกรอบด้านใน ไม่รวมเส้นขอบของกระดาน
+       ถ้าใช้ getBoundingClientRect จะรวมเส้นขอบเข้ามาด้วย ตัวอักษรจะเยื้องจากกึ่งกลาง */
+    boxSize() {
+      return { w: this.wrap.clientWidth, h: this.wrap.clientHeight };
+    }
+
     resize() {
-      const r = this.wrap.getBoundingClientRect();
-      if (!r.width || !r.height) return;
+      const { w, h } = this.boxSize();
+      if (!w || !h) return;
       const dpr = Math.min(window.devicePixelRatio || 1, 3);
+      const oldW = this.w;
+      const oldH = this.h;
+
       [this.guide, this.ink, this.check].filter(Boolean).forEach((c) => {
-        c.width = Math.round(r.width * dpr);
-        c.height = Math.round(r.height * dpr);
-        c.style.width = r.width + 'px';
-        c.style.height = r.height + 'px';
+        c.width = Math.round(w * dpr);
+        c.height = Math.round(h * dpr);
+        c.style.width = w + 'px';
+        c.style.height = h + 'px';
       });
       [this.gctx, this.ictx, this.cctx].filter(Boolean).forEach((c) => c.setTransform(dpr, 0, 0, dpr, 0, 0));
-      this.w = r.width;
-      this.h = r.height;
+      this.w = w;
+      this.h = h;
+      this.dpr = dpr;
+
+      // ลายเส้นที่เขียนไว้ถูกเก็บเป็นพิกัดจริง ต้องย่อ-ขยายตามกระดานด้วย
+      // ไม่งั้นพอหมุนจอหรือขนาดเปลี่ยน ลายมือจะเลื่อนไปคนละที่กับตัวอย่าง
+      if (oldW && oldH && (Math.abs(oldW - w) > 0.5 || Math.abs(oldH - h) > 0.5)) {
+        const sx = w / oldW;
+        const sy = h / oldH;
+        const sw = Math.min(sx, sy);
+        const scale = (st) => st.pts.forEach((p) => { p.x *= sx; p.y *= sy; p.w *= sw; });
+        this.strokes.forEach(scale);
+        this.redoStack.forEach(scale);
+        if (this.current) scale(this.current);
+      }
+
       this.drawGuide();
       this.redraw();
+    }
+
+    /* ล้างทั้งผืนผ้าใบ ไม่ขึ้นกับ transform ปัจจุบัน กันภาพค้างจากรอบก่อน */
+    _wipe(ctx, canvas) {
+      if (!ctx || !canvas) return;
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.restore();
+    }
+
+    /* ถ้าขนาดจริงของกระดานไม่ตรงกับที่จำไว้ ให้ตั้งขนาดใหม่ก่อนวาด
+       (เช่น แถบเบราว์เซอร์ในแอปขยับ หรือ iPad คืนหน้าจอหลังสลับแอป) */
+    _ensureSize() {
+      if (this._sizing) return false;
+      const { w, h } = this.boxSize();
+      if (!w || !h) return false;
+      if (Math.abs(w - this.w) < 0.5 && Math.abs(h - this.h) < 0.5 &&
+          this.guide.width === Math.round(w * (this.dpr || 1))) return false;
+      this._sizing = true;
+      this.resize();
+      this._sizing = false;
+      return true;
     }
 
     /* ---------- ชั้นตัวอย่าง ---------- */
@@ -78,7 +141,8 @@
     drawGuide() {
       const ctx = this.gctx;
       if (!this.w) return;
-      ctx.clearRect(0, 0, this.w, this.h);
+      if (this._ensureSize()) return;      // resize() วาดให้ใหม่แล้ว
+      this._wipe(ctx, this.guide);
 
       const midY = this.h / 2;
       this._drawLines(midY);
@@ -231,7 +295,7 @@
     showAnswer(text, color) {
       if (!this.check || !this.w) return;
       const ctx = this.cctx;
-      ctx.clearRect(0, 0, this.w, this.h);
+      this._wipe(ctx, this.check);
       ctx.save();
       const fontSize = this._fitText(ctx, text);
       ctx.lineJoin = 'round';
@@ -243,7 +307,7 @@
     }
 
     clearAnswer() {
-      if (this.check && this.w) this.cctx.clearRect(0, 0, this.w, this.h);
+      this._wipe(this.cctx, this.check);
     }
 
     _alpha(hex, a) {
@@ -378,7 +442,7 @@
 
     redraw() {
       if (!this.w) return;
-      this.ictx.clearRect(0, 0, this.w, this.h);
+      this._wipe(this.ictx, this.ink);
       this.strokes.forEach((s) => {
         if (s.pts.length === 1) { this._drawDot(s); return; }
         for (let i = 1; i < s.pts.length; i++) this._drawSegment(s, i);
