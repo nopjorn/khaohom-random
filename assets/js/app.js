@@ -245,6 +245,19 @@
     return S.listenOnly ? 'none' : S.guide;
   }
 
+  /* ปรับขนาดตัวอักษรในกรอบตัวอย่างตามความยาวข้อความ กันคำยาว ๆ ล้นกรอบ/ตกบรรทัด */
+  function fitCharText(text) {
+    const len = [...text].length;
+    let scale = 1;
+    if (len === 2) scale = 0.72;
+    else if (len === 3) scale = 0.55;
+    else if (len === 4) scale = 0.44;
+    else if (len >= 5) scale = Math.max(0.3, 2.2 / len);
+    charText.style.fontSize = scale === 1
+      ? ''
+      : `clamp(${Math.round(80 * scale)}px, ${(15 * scale).toFixed(1)}vw, ${Math.round(190 * scale)}px)`;
+  }
+
   function newRound(speak = true) {
     stopTimers();
     stopRepeat();
@@ -259,6 +272,7 @@
     catBadge.textContent = (CATEGORIES.find((c) => c.id === current.cat) || {}).name || '';
     catBadge.style.background = `linear-gradient(135deg, ${current.color}, ${shade(current.color, -18)})`;
     charText.textContent = shownChar(current);
+    fitCharText(shownChar(current));
     hintText.textContent = current.hint || '';
 
     board.accent = current.color;
@@ -908,6 +922,7 @@
         setSeg('vowelSeg', 'vowel', S.vowelStyle);
         if (current) {
           charText.textContent = shownChar(current);
+          fitCharText(shownChar(current));
           board.setGuide(shownChar(current), effectiveGuide());
         }
         AUDIO.sfx.pop();
